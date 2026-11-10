@@ -3,7 +3,10 @@ package publication
 
 import (
 	"context"
+	"crypto/sha512"
+	"encoding/hex"
 	"errors"
+	"io"
 	"os"
 
 	"github.com/marcuoli/go-atomicfile/atomicfile"
@@ -15,17 +18,27 @@ import (
 // staging files on failure. Inspect installed even when cleanup returns an error.
 // Cancellation before commit preserves the existing destination; a commit already
 // in progress cannot be revoked. The document and destination must be used serially.
-func Publish(ctx context.Context, path string, overwrite bool, doc *document.Document) (installed bool, returnedErr error) {
+func Publish(ctx context.Context, path string, overwrite bool, doc *document.Document) (bool, error) {
+	return PublishSource(ctx, path, overwrite, doc)
+}
+
+// Save stages, syncs and atomically publishes source, returning its committed
+// byte count and SHA-512 digest. Registration, retention and acceptance policy
+// belong to the caller. A failure before commit preserves the destination.
+func Save(ctx context.Context, path string, overwrite bool, source Source) (receipt Receipt, returnedErr error) {
+	if source == nil {
+		return receipt, errors.New("document source is required")
+	}
 	if err := ctx.Err(); err != nil {
-		return false, err
+		return receipt, err
 	}
 	p, err := atomicfile.NewPublication(path, overwrite)
 	if err != nil {
-		return false, err
+		return receipt, err
 	}
 	f, err := p.CreateTemp(".document-*.docx")
 	if err != nil {
-		return false, err
+		return receipt, err
 	}
 	closed := false
 	defer func() {
@@ -36,19 +49,26 @@ func Publish(ctx context.Context, path string, overwrite bool, doc *document.Doc
 			returnedErr = errors.Join(returnedErr, err)
 		}
 	}()
-	if err = doc.Write(ctx, f); err != nil {
-		return false, err
+	digest := sha512.New()
+	count := &countWriter{writer: io.MultiWriter(f, digest)}
+	if err := source.Write(ctx, count); err != nil {
+		return receipt, err
 	}
-	if err = f.Sync(); err != nil {
-		return false, err
+	if err := f.Sync(); err != nil {
+		return receipt, err
 	}
 	err = f.Close()
 	closed = true
 	if err != nil {
-		return false, err
+		return receipt, err
 	}
-	if err = ctx.Err(); err != nil {
-		return false, err
+	if err := ctx.Err(); err != nil {
+		return receipt, err
 	}
-	return p.Commit(f.Name())
+	receipt.Installed, err = p.Commit(f.Name())
+	if receipt.Installed {
+		receipt.Size = count.count
+		receipt.SHA512 = hex.EncodeToString(digest.Sum(nil))
+	}
+	return receipt, err
 }

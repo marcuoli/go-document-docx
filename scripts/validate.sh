@@ -14,15 +14,26 @@ go test -count=1 ./...
 go vet ./...
 go mod verify
 go build ./...
+scan=false
 for arg in "$@"; do
  case "$arg" in
  --race) CGO_ENABLED=1 go test -race -count=1 ./... ;;
- --scan) go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./... ;;
+ --scan) scan=true ;;
  *) printf 'Unknown option: %s\n' "$arg" >&2; exit 2 ;;
  esac
 done
-go build -trimpath -buildvcs=false -o "$output/report-example" ./examples/report
-go version -m "$output/report-example" > "$output/build-metadata.txt"
+go list -deps ./examples/report > "$output/legacy-dependencies.txt"
+if grep -Eq 'docxgo|beevik/etree|golang.org/x/net/html|go-document-docx/editing' "$output/legacy-dependencies.txt"; then
+ printf 'Extended authoring entered legacy imports\n' >&2
+ exit 1
+fi
+for example in report authoring; do
+ binary="$output/$example-example"
+ go build -trimpath -buildvcs=false -o "$binary" "./examples/$example"
+ go version -m "$binary" > "$output/$example-build-metadata.txt"
+ if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 -mode=binary "$binary"; fi
+done
 go env -json GOVERSION GOOS GOARCH CGO_ENABLED GOWORK GOFLAGS > "$output/build-settings.json"
 go list -m -json all > "$output/modules.json"
-printf 'Validated source and native build. Evidence: %s\n' "$output"
+if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...; fi
+printf 'Validated both native examples and source. Evidence: %s\n' "$output"
