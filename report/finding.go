@@ -19,8 +19,8 @@ type Labels struct {
 // It does not assign severity, infer recommendations or reinterpret observations.
 func AddFinding(doc *document.Document, finding Finding, labels Labels) {
 	doc.Heading(finding.Title, 3)
-	// Keep status and the first observation in one paragraph so a heading cannot
-	// be stranded with only its status at the bottom of a page.
+	// Keep status and the first observation in one paragraph to reduce the chance of a heading being
+	// stranded with only its status at the bottom of a page.
 	var lead []string
 	for _, field := range [][2]string{{labels.Status, finding.Status}, {labels.Observation, finding.Observation}} {
 		if field[1] != "" {
