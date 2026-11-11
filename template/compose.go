@@ -15,7 +15,9 @@ import (
 
 // Compose appends a caller-supplied closing-page body after a page break, retaining
 // the main document's page geometry, headers, footers, theme and core properties.
-// It remaps styles, numbering, bookmarks and transitive image/link relationships.
+// It isolates imported style IDs, names and aliases, and remaps numbering,
+// bookmarks and transitive image/link relationships. Style run-property order is
+// normalized in the output without changing property values or source bytes.
 // Closing documents with section breaks, notes/comments, altChunks, tracked changes
 // or reference fields are rejected explicitly; this is not an arbitrary-file merger.
 // Neither input is changed and no external relationship is fetched.
@@ -242,7 +244,7 @@ func referenceField(text string) bool {
 		return false
 	}
 	switch fields[0] {
-	case "REF", "PAGEREF", "NOTEREF", "STYLEREF":
+	case "REF", "PAGEREF", "NOTEREF", "STYLEREF", "TOC":
 		return true
 	}
 	return false
@@ -319,7 +321,9 @@ func (c *composer) relationships(oldPart, newPart string, source, dest *etree.Do
 		suffix := kind[strings.LastIndex(kind, "/")+1:]
 		if body {
 			switch suffix {
-			case "styles", "numbering", "fontTable", "settings", "theme", "webSettings", "header", "footer":
+			// Note references are rejected above. Copying their unused parts would
+			// create multiple singleton note relationships in the combined package.
+			case "styles", "numbering", "fontTable", "settings", "theme", "webSettings", "header", "footer", "footnotes", "endnotes":
 				continue
 			}
 		}

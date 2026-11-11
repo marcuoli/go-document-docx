@@ -300,7 +300,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
 			if c.Tone == Unavailable {
 				fill = "EDEBE8"
 			}
-			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:fill="%s"/><w:vAlign w:val="top"/></w:tcPr>`, t.Widths[i], fill)
+			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/><w:vAlign w:val="top"/></w:tcPr>`, t.Widths[i], fill)
 			style := "TableText"
 			if header {
 				style = "TableHeader"

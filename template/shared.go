@@ -42,6 +42,8 @@ func (c *composer) shared() error {
 	if err := c.numbering(); err != nil {
 		return err
 	}
+	names := existingStyleNames(dest.Root())
+	normalizeStyleRuns(dest.Root())
 	defaults := opc.Child(source.Root(), opc.Word, "docDefaults")
 	for _, style := range source.Root().ChildElements() {
 		if style.Tag != "style" || style.NamespaceURI() != opc.Word {
@@ -60,9 +62,11 @@ func (c *composer) shared() error {
 			}
 		}
 		c.rewrite(cloned)
+		qualifyStyleNames(cloned, c.prefix, names)
 		if c.styleIDs[id] == c.defaultStyle && defaults != nil {
 			mergeDefaults(cloned, defaults)
 		}
+		normalizeStyleRuns(cloned)
 		dest.Root().AddChild(cloned)
 	}
 	if err := c.dest.SetXML(destName, dest); err != nil {
@@ -183,7 +187,7 @@ func (c *composer) numbering() error {
 			setAttr(cloned, opc.Word, "abstractNumId", c.abstractIDs[opc.Attr(e, opc.Word, "abstractNumId")])
 			inserted := false
 			for _, child := range dest.Root().ChildElements() {
-				if child.Tag == "num" {
+				if child.NamespaceURI() == opc.Word && (child.Tag == "num" || child.Tag == "numIdMacAtCleanup") {
 					dest.Root().InsertChildAt(child.Index(), cloned)
 					inserted = true
 					break
@@ -194,7 +198,12 @@ func (c *composer) numbering() error {
 			}
 		} else {
 			setAttr(cloned, opc.Word, "numId", c.numIDs[opc.Attr(e, opc.Word, "numId")])
-			dest.Root().AddChild(cloned)
+			// The cleanup identifier is terminal in CT_Numbering.
+			if tail := opc.Child(dest.Root(), opc.Word, "numIdMacAtCleanup"); tail != nil {
+				dest.Root().InsertChildAt(tail.Index(), cloned)
+			} else {
+				dest.Root().AddChild(cloned)
+			}
 		}
 	}
 	if err := c.dest.SetXML(destName, dest); err != nil {
