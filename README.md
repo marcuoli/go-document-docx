@@ -37,3 +37,7 @@ Runnable examples require explicit output paths:
 Read [operation coverage and limits](docs/operation-coverage.md), [architecture](docs/architecture.md), [sharing decisions](docs/code-sharing.md), [dependencies](docs/dependencies.md) and [the comment convention](CONTRIBUTING.md). Editors are serial mutable builders. A failed authoring call can leave partial state; discard it before publication. Translation, evidence policy, application identities/assets, registration and retention stay with the caller.
 
 Use template.RenderText for inline literal replacement while preserving an existing template package, including artwork and fields. Use template.Render for supported general-model text/image templates. See operation coverage for input limits.
+
+## Cell text colors
+
+Literal document cells accept an optional six-digit RGB TextColor, without a leading #. Empty preserves the inherited paragraph color. Text color and fill Tone are independent; callers choose the semantics and supply literal labels or glyphs. Invalid colors are rejected before serialization. Font availability and glyph appearance require qualification in the intended reader.

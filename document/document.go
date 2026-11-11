@@ -32,6 +32,9 @@ const (
 type Cell struct {
 	Text string
 	Tone Tone
+	// TextColor is an optional six-digit RGB color without a leading #.
+	// Empty inherits the paragraph style; it does not change the fill tone.
+	TextColor string
 }
 
 // Table contains a repeating header and explicit column widths in twips.

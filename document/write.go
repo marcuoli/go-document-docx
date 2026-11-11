@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -155,6 +156,14 @@ func (d *Document) validate(ctx context.Context) error {
 				if c.Tone != Plain && c.Tone != Difference && c.Tone != Unavailable {
 					return fmt.Errorf("unsupported cell tone")
 				}
+				if c.TextColor != "" {
+					if len(c.TextColor) != 6 {
+						return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
+					}
+					if _, err := hex.DecodeString(c.TextColor); err != nil {
+						return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
+					}
+				}
 				if err := check(c.Text); err != nil {
 					return err
 				}
@@ -224,8 +233,12 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text string) error {
+func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string) error {
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/></w:pPr><w:r>`)
+	if color != "" {
+		// Color is validated before serialization; plain runs keep inherited styles.
+		b.WriteString(`<w:rPr><w:color w:val="` + color + `"/></w:rPr>`)
+	}
 	if err := writeText(ctx, b, text); err != nil {
 		return err
 	}
@@ -235,7 +248,7 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text string)
 
 func paragraph(style, text string) string {
 	var b strings.Builder
-	_ = writeParagraph(context.Background(), &b, style, text)
+	_ = writeParagraph(context.Background(), &b, style, text, "")
 	return b.String()
 }
 
@@ -254,7 +267,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 				return "", err
 			}
 		default:
-			if err := writeParagraph(ctx, &b, item.style, item.text); err != nil {
+			if err := writeParagraph(ctx, &b, item.style, item.text, ""); err != nil {
 				return "", err
 			}
 		}
@@ -305,7 +318,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
 			if header {
 				style = "TableHeader"
 			}
-			if err := writeParagraph(ctx, b, style, c.Text); err != nil {
+			if err := writeParagraph(ctx, b, style, c.Text, c.TextColor); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

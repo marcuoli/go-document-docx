@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add optional validated RGB text colors for literal document cells, preserving inherited styles and existing fill tones.
+
 ## 0.2.2
 
 - Prevent composed Word style collisions by isolating imported names/aliases as custom styles and retaining property values in schema order.
