@@ -27,8 +27,9 @@ func (d *Document) fonts() string {
 func (d *Document) styles() string {
 	o := d.options
 	base := fmt.Sprintf(`<w:styles xmlns:w="%s"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="%s" w:hAnsi="%s"/><w:color w:val="000000"/><w:sz w:val="%d"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:widowControl/><w:spacing w:after="100" w:line="264" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>`, wordNS, escape(o.Font), escape(o.Font), o.BodySize)
+	// Style run properties use a schema sequence: emphasis precedes color/size.
 	style := func(id, font string, size int, extraP, extraR string) string {
-		return fmt.Sprintf(`<w:style w:type="paragraph" w:styleId="%s"><w:name w:val="%s"/><w:basedOn w:val="Normal"/><w:pPr>%s</w:pPr><w:rPr><w:rFonts w:ascii="%s" w:hAnsi="%s"/><w:color w:val="000000"/><w:sz w:val="%d"/>%s</w:rPr></w:style>`, id, id, extraP, escape(font), escape(font), size, extraR)
+		return fmt.Sprintf(`<w:style w:type="paragraph" w:styleId="%s"><w:name w:val="%s"/><w:basedOn w:val="Normal"/><w:pPr>%s</w:pPr><w:rPr><w:rFonts w:ascii="%s" w:hAnsi="%s"/>%s<w:color w:val="000000"/><w:sz w:val="%d"/></w:rPr></w:style>`, id, id, extraP, escape(font), escape(font), extraR, size)
 	}
 	base += `<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>`
 	base += style("Title", o.HeadingFont, 60, `<w:keepNext/><w:spacing w:before="1440" w:after="360"/>`, `<w:b/>`)

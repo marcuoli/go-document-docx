@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Prevent composed Word style collisions by isolating imported names/aliases as custom styles and retaining property values in schema order.
+- Emit ordered emphasis, explicit shading patterns and terminal numbering cleanup identifiers; retain only the main document's note relationships.
+- Reject imported table-of-contents fields rather than leaving their style/bookmark references bound to another document.
+
 ## 0.2.1
 
 - Add layout-preserving inline literal template rendering with split-run substitution, unchanged-part retention and explicit unsupported-location checks.

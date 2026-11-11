@@ -18,3 +18,5 @@ The library's general MergeTemplate operation can clear an adjacent empty field-
 Other candidates were assessed before implementation. The narrower high-level table wrappers did not cover the report controls; a licensed runtime was not selected. The broader requirements now justify the opt-in general engine while the small report path keeps its original import surface. Review newly released compatible fixes before the next dependency/build qualification.
 
 All dependencies are consumed as official releases with signed module sums. No local replacement, fork, vendored modification, cache patch or build-time rewriting is part of final validation.
+
+Qualification on 2026-11-11 retains the required Go 1.27.3 toolchain. govulncheck reports GO-2026-6859 (net/http MaxBytesReader header race), fixed in Go 1.27.4, at required-module level; no affected imported package or called symbol was reported for this module or either example binary. This is a bounded scanner result, not proof of exploitability or universal absence of vulnerabilities. No compiler migration is included in the Word compatibility patch. Recheck this advisory at the next configured build review.
