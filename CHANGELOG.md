@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Add layout-preserving inline literal template rendering with split-run substitution, unchanged-part retention and explicit unsupported-location checks.
+
 ## 0.2.0
 
 - Add opt-in general authoring, explicit formatting, native navigation/lists/fields, section-aware tables, images and reusable action summaries while preserving the small report API.
