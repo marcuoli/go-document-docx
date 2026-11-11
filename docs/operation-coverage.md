@@ -48,3 +48,7 @@ Closing-page composition is deliberately bounded: no multi-section closing bodie
 Helper link/style amendments require represented simple layouts. Field-bearing table cells, helper-styled runs after native fields, and shortened/linked merged or complex cells fail explicitly. Use supported native operations for other layouts and qualify their serialized behavior. The preserved-template style adapter guarantees helper-owned new definitions; it does not claim every mutation of an existing native style is retained.
 
 Font collections, subsets and bitmap-only/restricted embedding are unsupported. Package-level synthetic tests verify key/relationship structure; installed-font and reader behavior remains an independent visual qualification.
+
+RenderText substitutes inline literal keys directly in the original Word text nodes. It retains drawings, fields, section properties, source formatting and untouched package parts. Split runs are supported; replacement text uses the first character formatting. It does not replace images or execute Jinja. Keys inside fields/revisions/attributes, keys crossing non-text boundaries, and line-break/tab values fail explicitly.
+
+RenderTextWithOptions can allow an exact, caller-identified simple-field result cache via TextOptions.SimpleFieldResults. The existing instruction remains unchanged and is not executed. Word may overwrite the cached result on refresh; the caller must make its displayed value agree with the referenced content. Complex fields and revisions remain rejected.

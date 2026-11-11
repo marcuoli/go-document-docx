@@ -14,3 +14,7 @@
 | Data-frame input and application storage | Caller adapters | Accept explicit rectangular values/ordered key-value entries and publication receipts. Do not introduce a frame runtime, ORM or background cleanup into a document library. |
 
 The broader editor is opt-in. Both runnable examples validate public APIs with the same compiler and released graph. Native checks, advisory scans and rendered examples are recorded by the owning source issue; compatibility claims remain bounded to that evidence.
+
+Layout-preserving literal text substitution belongs in template.RenderText. Existing package/namespace validation and etree editing are reused, while applications retain private template bytes and value/asset policy. Synthetic tests qualify split runs, fields, drawing nodes and unchanged parts. This opt-in path avoids reconstructing unsupported artwork through the general object model.
+
+Simple-field cache opt-in is application policy: the module only matches explicit instructions and preserves them. Default literal rendering rejects field placeholders. This avoids treating arbitrary cached field text as durable content.
