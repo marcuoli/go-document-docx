@@ -45,3 +45,17 @@ Literal document cells accept an optional six-digit RGB TextColor, without a lea
 Cells can also opt into Bold emphasis. False preserves inherited emphasis; true emits direct bold before color in the run-property sequence. Literal labels, including angle brackets, remain text. The report example demonstrates colored checkmarks and bold colored placeholders; interpretation remains caller-owned.
 
 Use ParagraphWithNext for a brief literal introduction that should stay with the following table. It keeps body typography and adds reader pagination hints without creating a heading or outline entry. A reader may still split content taller than a page.
+
+
+### Literal table appearance
+
+`report.Defaults()` selects compact 8-point technical tables with bold white header text on black, a half-point grid and centered cells. Each call owns an independent appearance value. Cell text colors and semantic difference/unavailable fills still take precedence in their respective cells.
+
+```go
+options := report.Defaults()
+options.TableStyle.HeaderFill = "243746" // Optional alternate header palette.
+doc, err := document.New(options)
+// New owns the settings; later caller changes cannot alter doc.
+```
+
+Set `options.TableStyle = nil` to retain the literal renderer's historical appearance. `document.TableStyle` uses RGB colors and twip padding/spacing; its zero padding/spacing values are explicit. It preserves natural wrapping and adds no text-fitting or fixed-height policy. The runnable `examples/report` consumer demonstrates configurable headers and independent cell hints. See the API documentation for accepted alignment and size bounds.

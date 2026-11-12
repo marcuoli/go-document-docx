@@ -16,7 +16,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: report <output.docx>")
 		os.Exit(2)
 	}
-	d, err := document.New(report.Defaults())
+	options := report.Defaults()
+	options.TableStyle.HeaderFill = "243746"
+	d, err := document.New(options)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

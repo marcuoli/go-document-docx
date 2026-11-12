@@ -9,7 +9,7 @@ func (d *Document) fonts() string {
 	var b strings.Builder
 	b.WriteString(`<w:fonts xmlns:w="` + wordNS + `">`)
 	seen := map[string]bool{}
-	for _, name := range []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont} {
+	for _, name := range []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont, tableStyleFor(d.options).HeaderFont} {
 		if seen[name] {
 			continue
 		}
@@ -42,8 +42,14 @@ func (d *Document) styles() string {
 		base += style(fmt.Sprintf("Heading%d", i+1), font, size, fmt.Sprintf(`<w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="100"/><w:outlineLvl w:val="%d"/>`, i), `<w:b/>`)
 	}
 	base += style("Lead", o.Font, o.BodySize, `<w:keepNext/><w:keepLines/>`, "")
-	base += style("TableText", o.Font, o.TableSize, `<w:spacing w:after="30" w:line="240" w:lineRule="auto"/>`, "")
-	base += style("TableHeader", o.SubheadingFont, o.TableSize, `<w:keepNext/><w:spacing w:after="30"/>`, `<w:b/>`)
+	tableSpacing := `<w:spacing w:after="30" w:line="240" w:lineRule="auto"/>`
+	headerSpacing := `<w:spacing w:after="30"/>`
+	if o.TableStyle != nil {
+		tableSpacing = fmt.Sprintf(`<w:spacing w:before="0" w:after="%d" w:line="240" w:lineRule="auto"/>`, o.TableStyle.ParagraphAfter)
+		headerSpacing = tableSpacing
+	}
+	base += style("TableText", o.Font, o.TableSize, tableSpacing, "")
+	base += style("TableHeader", tableStyleFor(o).HeaderFont, o.TableSize, `<w:keepNext/>`+headerSpacing, `<w:b/>`)
 	base += style("TableAfter", o.Font, 12, `<w:spacing w:after="80" w:line="80" w:lineRule="exact"/>`, "")
 	base += style("Footer", o.Font, 16, `<w:jc w:val="right"/>`, "")
 	return base + `</w:styles>`

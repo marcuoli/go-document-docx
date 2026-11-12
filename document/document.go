@@ -11,6 +11,8 @@ import (
 // Fonts are referenced, never embedded or installed. Header and Footer are caller text.
 // FallbackFont is an optional reader substitution hint, not a rendering guarantee.
 type Options struct {
+	// TableStyle optionally overrides literal table appearance; nil preserves legacy output.
+	TableStyle                                       *TableStyle
 	PageWidth, PageHeight, Margin                    int
 	Font, HeadingFont, SubheadingFont                string
 	FallbackFont                                     string
@@ -68,6 +70,10 @@ func New(options Options) (*Document, error) {
 	if err := validateOptions(options); err != nil {
 		return nil, err
 	}
+	if options.TableStyle != nil {
+		owned := *options.TableStyle
+		options.TableStyle = &owned
+	}
 	return &Document{options: options}, nil
 }
 
@@ -92,6 +98,9 @@ func validateOptions(options Options) error {
 		if len(text) > 8192 {
 			return fmt.Errorf("header, footer or page label exceeds 8 KiB")
 		}
+	}
+	if options.TableStyle != nil {
+		return validateTableStyle(*options.TableStyle)
 	}
 	return nil
 }

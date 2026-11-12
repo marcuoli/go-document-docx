@@ -97,7 +97,7 @@ func (d *Document) validate(ctx context.Context) error {
 		}
 		return nil
 	}
-	for _, text := range []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont, d.options.FallbackFont, d.options.Header, d.options.Footer, d.options.PageLabel} {
+	for _, text := range []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont, d.options.FallbackFont, d.options.Header, d.options.Footer, d.options.PageLabel, tableStyleFor(d.options).HeaderFont} {
 		if err := check(text); err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 		case item.pageBreak:
 			b.WriteString(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
 		case item.table != nil:
-			if err := writeTable(ctx, &b, *item.table); err != nil {
+			if err := writeTable(ctx, &b, *item.table, d.options); err != nil {
 				return "", err
 			}
 		default:
@@ -291,12 +291,25 @@ func (d *Document) body(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
+func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options) error {
+	appearance := tableStyleFor(options)
 	width := 0
 	for _, w := range t.Widths {
 		width += w
 	}
-	fmt.Fprintf(b, `<w:tbl><w:tblPr><w:tblW w:w="%d" w:type="dxa"/><w:tblBorders><w:bottom w:val="single" w:sz="4" w:color="D6D2CE"/><w:insideH w:val="single" w:sz="4" w:color="E8E5E1"/></w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="70" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="70" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>`, width)
+	fmt.Fprintf(b, `<w:tbl><w:tblPr><w:tblW w:w="%d" w:type="dxa"/><w:tblBorders>`, width)
+	borders := []string{"bottom", "insideH"}
+	if appearance.GridBorders {
+		borders = []string{"top", "left", "bottom", "right", "insideH", "insideV"}
+	}
+	for _, edge := range borders {
+		color := appearance.BorderColor
+		if options.TableStyle == nil && edge == "insideH" {
+			color = "E8E5E1"
+		}
+		fmt.Fprintf(b, `<w:%s w:val="single" w:sz="4" w:color="%s"/>`, edge, color)
+	}
+	fmt.Fprintf(b, `</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="%d" w:type="dxa"/><w:left w:w="%d" w:type="dxa"/><w:bottom w:w="%d" w:type="dxa"/><w:right w:w="%d" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>`, appearance.PaddingTop, appearance.PaddingLeft, appearance.PaddingBottom, appearance.PaddingRight)
 	for _, w := range t.Widths {
 		fmt.Fprintf(b, `<w:gridCol w:w="%d"/>`, w)
 	}
@@ -308,12 +321,12 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
 		}
 		b.WriteString(`</w:trPr>`)
 		for i, c := range cells {
-			fill := "FFFFFF"
+			fill := appearance.BodyFill
 			if index%2 == 1 {
-				fill = "F7F6F4"
+				fill = appearance.AlternateFill
 			}
 			if header {
-				fill = "E9E5DF"
+				fill = appearance.HeaderFill
 			}
 			if c.Tone == Difference {
 				fill = "FFF0D5"
@@ -321,12 +334,16 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
 			if c.Tone == Unavailable {
 				fill = "EDEBE8"
 			}
-			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/><w:vAlign w:val="top"/></w:tcPr>`, t.Widths[i], fill)
+			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/><w:vAlign w:val="%s"/></w:tcPr>`, t.Widths[i], fill, appearance.VerticalAlignment)
 			style := "TableText"
 			if header {
 				style = "TableHeader"
 			}
-			if err := writeParagraph(ctx, b, style, c.Text, c.TextColor, c.Bold); err != nil {
+			color := c.TextColor
+			if header {
+				color = appearance.HeaderTextColor
+			}
+			if err := writeParagraph(ctx, b, style, c.Text, color, c.Bold); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

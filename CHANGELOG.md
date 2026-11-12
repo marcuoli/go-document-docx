@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add validated literal table appearance options with owned settings and backward-compatible nil rendering; use a compact high-contrast grid in technical-report defaults while preserving cell colors, fill tones and exact text.
+
 ## 0.3.0
 
 - Add optional validated RGB text colors and bold emphasis for literal document cells, preserving inherited styles and existing fill tones.
