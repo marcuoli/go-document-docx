@@ -35,6 +35,8 @@ type Cell struct {
 	// TextColor is an optional six-digit RGB color without a leading #.
 	// Empty inherits the paragraph style; it does not change the fill tone.
 	TextColor string
+	// Bold adds direct emphasis; false preserves the paragraph style's emphasis.
+	Bold bool
 }
 
 // Table contains a repeating header and explicit column widths in twips.
@@ -111,6 +113,13 @@ func (d *Document) Heading(text string, level int) {
 // No text is interpreted as markup, formulas, fields or hyperlinks.
 func (d *Document) Paragraph(text string) {
 	d.blocks = append(d.blocks, block{style: "Normal", text: text})
+}
+
+// ParagraphWithNext appends literal prose with keep-next and keep-lines hints.
+// It is useful before a table; the reader still controls final pagination and
+// can split content taller than a page. Literal-text rules match Paragraph.
+func (d *Document) ParagraphWithNext(text string) {
+	d.blocks = append(d.blocks, block{style: "Lead", text: text})
 }
 
 // PageBreak starts the next block on a new page without creating a section.

@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
-- Add optional validated RGB text colors for literal document cells, preserving inherited styles and existing fill tones.
+- Add optional validated RGB text colors and bold emphasis for literal document cells, preserving inherited styles and existing fill tones.
+- Add literal purpose paragraphs with keep-next/keep-lines hints so table introductions can remain with their data.
 
 ## 0.2.2
 

@@ -29,6 +29,9 @@ func main() {
 	d.Paragraph("One configuration difference requires investigation. No operational acceptance is implied.")
 	d.Heading("Environment comparison", 1)
 	d.AddTable(document.Table{Headers: []string{"Property", "Source", "Target"}, Widths: []int{3500, 3000, 3246}, Rows: [][]document.Cell{{{Text: "Character set"}, {Text: "AL32UTF8"}, {Text: "AL32UTF8"}}, {{Text: "Rows"}, {Text: "9007199254740993"}, {Text: "9007199254740994", Tone: document.Difference}}}})
+	d.Heading("Cell presentation", 2)
+	d.ParagraphWithNext("Literal cell formatting remains separate from evidence interpretation.")
+	d.AddTable(document.Table{Headers: []string{"Property", "Source", "Target"}, Widths: []int{3500, 3000, 3246}, Rows: [][]document.Cell{{{Text: "Matching value"}, {Text: "✓", TextColor: "2E7D32"}, {Text: "✓", TextColor: "2E7D32"}}, {{Text: "Optional value"}, {Text: "<Manual Entry>", TextColor: "B3261E", Bold: true}, {Text: "<Manual Entry>", TextColor: "B3261E", Bold: true}}}})
 	d.Heading("Findings and pending actions", 1)
 	d.Paragraph("Review the row-count difference against the agreed cutoff before accepting the destination.")
 	if _, err = publication.Publish(context.Background(), os.Args[1], false, d); err != nil {

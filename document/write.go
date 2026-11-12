@@ -111,7 +111,7 @@ func (d *Document) validate(ctx context.Context) error {
 		}
 		if b.table == nil {
 			switch b.style {
-			case "Normal", "Title", "Subtitle", "Heading1", "Heading2", "Heading3":
+			case "Normal", "Lead", "Title", "Subtitle", "Heading1", "Heading2", "Heading3":
 			default:
 				return fmt.Errorf("unsupported heading level")
 			}
@@ -233,11 +233,19 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string) error {
+func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold bool) error {
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/></w:pPr><w:r>`)
-	if color != "" {
-		// Color is validated before serialization; plain runs keep inherited styles.
-		b.WriteString(`<w:rPr><w:color w:val="` + color + `"/></w:rPr>`)
+	if bold || color != "" {
+		// Emphasis precedes color in the OOXML run-property sequence. Empty
+		// formatting keeps inherited styles and the established literal path.
+		b.WriteString(`<w:rPr>`)
+		if bold {
+			b.WriteString(`<w:b/>`)
+		}
+		if color != "" {
+			b.WriteString(`<w:color w:val="` + color + `"/>`)
+		}
+		b.WriteString(`</w:rPr>`)
 	}
 	if err := writeText(ctx, b, text); err != nil {
 		return err
@@ -248,7 +256,7 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color 
 
 func paragraph(style, text string) string {
 	var b strings.Builder
-	_ = writeParagraph(context.Background(), &b, style, text, "")
+	_ = writeParagraph(context.Background(), &b, style, text, "", false)
 	return b.String()
 }
 
@@ -267,7 +275,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 				return "", err
 			}
 		default:
-			if err := writeParagraph(ctx, &b, item.style, item.text, ""); err != nil {
+			if err := writeParagraph(ctx, &b, item.style, item.text, "", false); err != nil {
 				return "", err
 			}
 		}
@@ -318,7 +326,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table) error {
 			if header {
 				style = "TableHeader"
 			}
-			if err := writeParagraph(ctx, b, style, c.Text, c.TextColor); err != nil {
+			if err := writeParagraph(ctx, b, style, c.Text, c.TextColor, c.Bold); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

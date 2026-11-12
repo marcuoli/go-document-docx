@@ -41,3 +41,7 @@ Use template.RenderText for inline literal replacement while preserving an exist
 ## Cell text colors
 
 Literal document cells accept an optional six-digit RGB TextColor, without a leading #. Empty preserves the inherited paragraph color. Text color and fill Tone are independent; callers choose the semantics and supply literal labels or glyphs. Invalid colors are rejected before serialization. Font availability and glyph appearance require qualification in the intended reader.
+
+Cells can also opt into Bold emphasis. False preserves inherited emphasis; true emits direct bold before color in the run-property sequence. Literal labels, including angle brackets, remain text. The report example demonstrates colored checkmarks and bold colored placeholders; interpretation remains caller-owned.
+
+Use ParagraphWithNext for a brief literal introduction that should stay with the following table. It keeps body typography and adds reader pagination hints without creating a heading or outline entry. A reader may still split content taller than a page.

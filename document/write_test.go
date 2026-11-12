@@ -44,3 +44,32 @@ func TestInvalidCellTextColorWritesNothing(t *testing.T) {
 		})
 	}
 }
+
+func TestCellBoldColorUsesOrderedPropertiesAndLiteralText(t *testing.T) {
+	d := fixture(t)
+	table := document.Table{Headers: []string{"Item", "Value"}, Widths: []int{4000, 5746}, Rows: [][]document.Cell{{{Text: "review"}, {Text: "<Manual Entry>", TextColor: "B3261E", Bold: true}}, {{Text: "emphasis"}, {Text: "literal", Bold: true}}}}
+	d.AddTable(table)
+	table.Rows[0][1].Bold = false
+	var out bytes.Buffer
+	if err := d.Write(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	main := parts(t, out.Bytes())["word/document.xml"]
+	if !strings.Contains(main, `<w:rPr><w:b/><w:color w:val="B3261E"/></w:rPr>`) || !strings.Contains(main, `&lt;Manual Entry&gt;`) || strings.Count(main, `<w:b/>`) != 2 {
+		t.Fatal("bold/color property order, literal text or owned emphasis lost", main)
+	}
+}
+
+func TestParagraphWithNextUsesBodyStyleAndPaginationHints(t *testing.T) {
+	d := fixture(t)
+	d.ParagraphWithNext("Brief purpose before the data")
+	d.AddTable(document.Table{Headers: []string{"Value"}, Widths: []int{9746}, Rows: [][]document.Cell{{{Text: "literal"}}}})
+	var out bytes.Buffer
+	if err := d.Write(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	p := parts(t, out.Bytes())
+	if !strings.Contains(p["word/document.xml"], `<w:pStyle w:val="Lead"/>`) || !strings.Contains(p["word/styles.xml"], `<w:pPr><w:keepNext/><w:keepLines/></w:pPr>`) {
+		t.Fatal("purpose paragraph lacks pagination hints")
+	}
+}

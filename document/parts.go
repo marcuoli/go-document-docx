@@ -41,6 +41,7 @@ func (d *Document) styles() string {
 		}
 		base += style(fmt.Sprintf("Heading%d", i+1), font, size, fmt.Sprintf(`<w:keepNext/><w:keepLines/><w:spacing w:before="240" w:after="100"/><w:outlineLvl w:val="%d"/>`, i), `<w:b/>`)
 	}
+	base += style("Lead", o.Font, o.BodySize, `<w:keepNext/><w:keepLines/>`, "")
 	base += style("TableText", o.Font, o.TableSize, `<w:spacing w:after="30" w:line="240" w:lineRule="auto"/>`, "")
 	base += style("TableHeader", o.SubheadingFont, o.TableSize, `<w:keepNext/><w:spacing w:after="30"/>`, `<w:b/>`)
 	base += style("TableAfter", o.Font, 12, `<w:spacing w:after="80" w:line="80" w:lineRule="exact"/>`, "")
