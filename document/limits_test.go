@@ -45,7 +45,7 @@ func TestGeneratedPropertyOrdering(t *testing.T) {
 		t.Fatal("default paragraph properties violate schema order")
 	}
 	var b strings.Builder
-	if err := writeTable(context.Background(), &b, Table{Headers: []string{"field"}, Widths: []int{1000}}); err != nil {
+	if err := writeTable(context.Background(), &b, Table{Headers: []string{"field"}, Widths: []int{1000}}, d.options); err != nil {
 		t.Fatal(err)
 	}
 	x := b.String()

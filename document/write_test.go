@@ -3,6 +3,7 @@ package document_test
 import (
 	"bytes"
 	"context"
+	"encoding/xml"
 	"strings"
 	"testing"
 
@@ -27,8 +28,31 @@ func TestCellTextColorsPreserveLiteralTextAndOwnedInputs(t *testing.T) {
 			t.Fatalf("missing %q", expected)
 		}
 	}
-	if strings.Count(main, "<w:color") != 2 || strings.Contains(main, "0000FF") {
-		t.Fatal("color leaked into inherited cells or caller mutation changed snapshot")
+	if strings.Contains(main, "0000FF") {
+		t.Fatal("caller mutation changed the owned cell color")
+	}
+	// Header colors are intentional preset styling. Uncolored body cells must
+	// still inherit their text color instead of borrowing a neighboring result.
+	var parsed struct {
+		Cells []struct {
+			Text string `xml:"p>r>t"`
+			XML  string `xml:",innerxml"`
+		} `xml:"body>tbl>tr>tc"`
+	}
+	if err := xml.Unmarshal([]byte(main), &parsed); err != nil {
+		t.Fatal(err)
+	}
+	neutral := 0
+	for _, cell := range parsed.Cells {
+		if cell.Text == "literal <value> & exact 9007199254740993" || cell.Text == "unavailable" {
+			neutral++
+			if strings.Contains(cell.XML, "<w:color") {
+				t.Fatal("result color leaked into an inherited body cell", cell.Text)
+			}
+		}
+	}
+	if neutral != 2 {
+		t.Fatal("neutral body cells disappeared", neutral)
 	}
 }
 
