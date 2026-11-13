@@ -69,3 +69,22 @@ Style IDs are exact. Apply alignment before Compose renames imported styles, or 
 Use the document.Document method HeadingOnNewPage(text, level) for a section that starts on a new page.
 The boundary belongs to the heading, avoiding an empty break/spacer paragraph
 after a full table. Existing Heading and PageBreak calls retain their behavior.
+
+## Optional desktop Word TOC refresh
+
+Import word and wrap an existing publication.Source with word.WithUpdatedFields(source, word.Options{}), then pass it to publication.Save. The decorator populates existing tables of contents and caption indexes, repaginates, refreshes TOC page numbers and saves before the destination is installed. It does not create a TOC or update arbitrary fields. Word may rewrite package XML, pagination and cached fields; this mode does not promise byte-identical template parts.
+
+Windows and installed, configured desktop Microsoft Word in an interactive user profile are required. Normal authoring and publication stay portable and never invoke Word. Unsupported/unavailable hosts return word.ErrUnavailable; failures before commit preserve the destination. The wrapper creates and closes its own Word instance and never attaches to an active one. Macros are disabled for opening and the link-update preference is restored afterward. Options.TemporaryDirectory scopes owned staging; relative paths are made absolute before Word opens them.
+
+Calls are serialized in this process. Cancellation is checked between synchronous COM calls and before publication; an in-flight Word call cannot be interrupted or assigned a hard timeout. No user Word process is force-terminated. Callers own source/writer lifetime and should serialize use.
+
+The examples/word-refresh command accepts separate input/output paths; output publication requires a new destination. Enable the native synthetic TOC test explicitly with DOCX_WORD_INTEGRATION=1 and go test -tags=integration -run TestNativeWordPopulatesTOC ./word.
+
+Implementation uses the official MIT-licensed github.com/go-ole/go-ole v1.3.0 release (upstream and module proxy checked 2026-11-13). It remains Windows-only and requires no CGO. Official method references checked on that date:
+
+- https://learn.microsoft.com/en-us/office/vba/api/word.tableofcontents.update
+- https://learn.microsoft.com/en-us/office/vba/api/word.document.repaginate
+- https://learn.microsoft.com/en-us/office/vba/api/word.tableofcontents.updatepagenumbers
+- https://learn.microsoft.com/en-us/office/vba/api/word.application.automationsecurity
+
+Caption indexes use TOC fields too. Refreshing TablesOfFigures alongside TablesOfContents clears stale caption bookmark references; an index with no matching captions shows Word's empty-index message.

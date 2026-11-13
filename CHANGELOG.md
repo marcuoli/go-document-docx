@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add optional Windows desktop Word TOC/caption-index refresh as a publication.Source decorator with isolated staging, macro-disabled opening, exact error propagation and explicit native coverage; normal rendering stays portable.
+
 - Add HeadingOnNewPage with a paragraph-bound page break and omit a preceding table spacer at that boundary, avoiding blank pages after full tables while retaining existing Heading/PageBreak behavior.
 
 - Keep appended-document pagination on the imported paragraph instead of a standalone break run that can create an empty page after a full table.
