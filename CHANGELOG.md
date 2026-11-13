@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add style-selected paragraph alignment for retained document packages, preserving literal text, fields and unchanged parts; demonstrate justified prose in a separate paragraph-alignment example.
+
 - Add validated literal table appearance options with owned settings and backward-compatible nil rendering; use a compact high-contrast grid in technical-report defaults while preserving cell colors, fill tones and exact text.
 
 ## 0.3.0

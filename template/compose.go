@@ -283,13 +283,7 @@ func all(root *etree.Element) []*etree.Element {
 	return out
 }
 func setAttr(e *etree.Element, namespace, key, value string) {
-	for i, a := range e.Attr {
-		if a.Key == key && a.NamespaceURI() == namespace {
-			e.Attr[i].Value = value
-			return
-		}
-	}
-	e.CreateAttr("w:"+key, value)
+	opc.SetAttr(e, namespace, key, value)
 }
 func (c *composer) rewrite(root *etree.Element) {
 	for _, e := range all(root) {

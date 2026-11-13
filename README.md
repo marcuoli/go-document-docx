@@ -59,3 +59,9 @@ doc, err := document.New(options)
 ```
 
 Set `options.TableStyle = nil` to retain the literal renderer's historical appearance. `document.TableStyle` uses RGB colors and twip padding/spacing; its zero padding/spacing values are explicit. It preserves natural wrapping and adds no text-fitting or fixed-height policy. The runnable `examples/report` consumer demonstrates configurable headers and independent cell hints. See the API documentation for accepted alignment and size bounds.
+
+## Paragraph alignment
+
+Use formatting.AlignParagraphs(ctx, source, "justify", "", "Normal", "Lead") to justify selected prose without changing heading or data-cell styles. The empty style ID selects paragraphs without an explicit style. Matching prose inside layout tables is included; headers and footers remain untouched. Other supported alignments are left, center and right.
+
+Style IDs are exact. Apply alignment before Compose renames imported styles, or supply the retained document's actual IDs. This targeted formatter preserves text, fields and unchanged package parts rather than loading and rewriting the complete native authoring model. The paragraph-alignment example demonstrates the publication path without changing the small report example; editing.ParagraphOptions remains available for newly authored native content.

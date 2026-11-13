@@ -242,6 +242,18 @@ func Attr(e *etree.Element, namespace, tag string) string {
 	return ""
 }
 
+// SetAttr updates an attribute by namespace and local name, retaining its prefix.
+// New attributes use the canonical Word prefix; callers must establish its binding.
+func SetAttr(e *etree.Element, namespace, key, value string) {
+	for i, a := range e.Attr {
+		if a.Key == key && a.NamespaceURI() == namespace {
+			e.Attr[i].Value = value
+			return
+		}
+	}
+	e.CreateAttr("w:"+key, value)
+}
+
 // Ensure returns a direct Word child or appends one using the established w binding.
 func Ensure(root *etree.Element, tag string) *etree.Element {
 	if e := Child(root, Word, tag); e != nil {
