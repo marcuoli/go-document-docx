@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add HeadingOnNewPage with a paragraph-bound page break and omit a preceding table spacer at that boundary, avoiding blank pages after full tables while retaining existing Heading/PageBreak behavior.
+
 - Keep appended-document pagination on the imported paragraph instead of a standalone break run that can create an empty page after a full table.
 
 - Add style-selected paragraph alignment for retained document packages, preserving literal text, fields and unchanged parts; demonstrate justified prose in a separate paragraph-alignment example.

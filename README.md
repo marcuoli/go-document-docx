@@ -65,3 +65,7 @@ Set `options.TableStyle = nil` to retain the literal renderer's historical appea
 Use formatting.AlignParagraphs(ctx, source, "justify", "", "Normal", "Lead") to justify selected prose without changing heading or data-cell styles. The empty style ID selects paragraphs without an explicit style. Matching prose inside layout tables is included; headers and footers remain untouched. Other supported alignments are left, center and right.
 
 Style IDs are exact. Apply alignment before Compose renames imported styles, or supply the retained document's actual IDs. This targeted formatter preserves text, fields and unchanged package parts rather than loading and rewriting the complete native authoring model. The paragraph-alignment example demonstrates the publication path without changing the small report example; editing.ParagraphOptions remains available for newly authored native content.
+
+Use the document.Document method HeadingOnNewPage(text, level) for a section that starts on a new page.
+The boundary belongs to the heading, avoiding an empty break/spacer paragraph
+after a full table. Existing Heading and PageBreak calls retain their behavior.

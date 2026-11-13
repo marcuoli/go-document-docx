@@ -90,10 +90,11 @@ func TestLiteralTextLayoutAndOwnedInputs(t *testing.T) {
 
 func TestInvalidInputWritesNothing(t *testing.T) {
 	for name, configure := range map[string]func(*document.Document){
-		"control": func(d *document.Document) { d.Paragraph("bad\x01") },
-		"utf8":    func(d *document.Document) { d.Paragraph(string([]byte{0xff})) },
-		"heading": func(d *document.Document) { d.Heading("bad", 4) },
-		"width":   func(d *document.Document) { d.AddTable(document.Table{Headers: []string{"a"}, Widths: []int{30000}}) },
+		"control":          func(d *document.Document) { d.Paragraph("bad\x01") },
+		"utf8":             func(d *document.Document) { d.Paragraph(string([]byte{0xff})) },
+		"heading":          func(d *document.Document) { d.Heading("bad", 4) },
+		"heading-new-page": func(d *document.Document) { d.HeadingOnNewPage("bad", 4) },
+		"width":            func(d *document.Document) { d.AddTable(document.Table{Headers: []string{"a"}, Widths: []int{30000}}) },
 		"shape": func(d *document.Document) {
 			d.AddTable(document.Table{Headers: []string{"a"}, Widths: []int{1000}, Rows: [][]document.Cell{{}}})
 		},
@@ -157,5 +158,61 @@ func TestOptionsRejectInvalidGeometry(t *testing.T) {
 	o.TableSize = 0
 	if _, err := document.New(o); err == nil {
 		t.Fatal("invalid size admitted")
+	}
+}
+
+func TestHeadingOnNewPageKeepsBoundaryAfterFullTable(t *testing.T) {
+	d := fixture(t)
+	rows := make([][]document.Cell, 100)
+	for i := range rows {
+		rows[i] = []document.Cell{{Text: "Long preceding inventory"}, {Text: "Exact row content"}}
+	}
+	d.AddTable(document.Table{Headers: []string{"Name", "Value"}, Widths: []int{4000, 5000}, Rows: rows})
+	d.HeadingOnNewPage("Checks <literal>", 2)
+	d.Heading("First check", 3)
+	var out bytes.Buffer
+	if err := d.Write(context.Background(), &out); err != nil {
+		t.Fatal(err)
+	}
+	xmlParts := parts(t, out.Bytes())
+	var tree struct {
+		Body struct {
+			Paragraphs []struct {
+				Properties struct {
+					Style struct {
+						Value string `xml:"val,attr"`
+					} `xml:"pStyle"`
+					NewPage *struct{} `xml:"pageBreakBefore"`
+				} `xml:"pPr"`
+				Runs []struct {
+					Text   string `xml:"t"`
+					Breaks []struct {
+						Type string `xml:"type,attr"`
+					} `xml:"br"`
+				} `xml:"r"`
+			} `xml:"p"`
+		} `xml:"body"`
+	}
+	if err := xml.Unmarshal([]byte(xmlParts["word/document.xml"]), &tree); err != nil {
+		t.Fatal(err)
+	}
+	ps := tree.Body.Paragraphs
+	if len(ps) != 2 {
+		t.Fatal("full table acquired a spacer or break-only paragraph", len(ps))
+	}
+	if ps[0].Properties.Style.Value != "Heading2" || ps[0].Properties.NewPage == nil || len(ps[0].Runs) != 1 || ps[0].Runs[0].Text != "Checks <literal>" {
+		t.Fatal("new-page boundary or literal heading text was lost")
+	}
+	if ps[1].Properties.Style.Value != "Heading3" || ps[1].Properties.NewPage != nil {
+		t.Fatal("child heading inherited a new page")
+	}
+	for _, p := range ps {
+		for _, r := range p.Runs {
+			for _, br := range r.Breaks {
+				if br.Type == "page" {
+					t.Fatal("standalone break can spill after a full table")
+				}
+			}
+		}
 	}
 }

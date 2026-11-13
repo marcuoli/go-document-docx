@@ -28,3 +28,14 @@ Style identity and OOXML schema order belong to the shared document/template pac
 Generic style-selected paragraph amendments belong in formatting. The existing native paragraph options remain appropriate for newly authored model content; reconstructing a retained package through that model does not satisfy unchanged-part preservation. AlignParagraphs instead reuses internal/opc admission, namespace-aware attributes, schema order and ZIP publication. No second document model or third-party source copy is introduced.
 
 Exact style IDs and paragraph selection remain caller policy. Formatting includes matching prose inside layout tables/text boxes, while preserving unrelated styles, headers, footers, text, fields and other package parts. Apply it before composition renames styles or select the final IDs explicitly. The separate synthetic paragraph-alignment example exercises the publication path; the basic report example and its dependency guard remain unchanged. Compatibility tests cover literal values, fields, protected data/heading styles, unchanged parts, input ownership, no-op identity, cancellation, validation bounds and alternate namespace prefixes. Release and reader-specific qualification remain separate gates.
+## Paragraph-bound report headings - issue #15
+
+The small document writer owns paragraph serialization and post-table spacing.
+HeadingOnNewPage carries pageBreakBefore on the heading itself; a preceding
+table omits its trailing spacer only at that boundary. This avoids a spacer or
+break-only paragraph spilling after a full table. Existing Heading and PageBreak
+APIs retain their behavior. The report example exercises this path; tests cover a
+100-row table, parent/child hierarchy, literal text and invalid-level rejection.
+Applications select section boundaries; the library does not decide report
+organization or paginate content. Reader-specific rendering and release adoption
+remain separately qualified.

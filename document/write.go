@@ -233,8 +233,12 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold bool) error {
-	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/></w:pPr><w:r>`)
+func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool) error {
+	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
+	if pageBreakBefore {
+		b.WriteString(`<w:pageBreakBefore/>`)
+	}
+	b.WriteString(`</w:pPr><w:r>`)
 	if bold || color != "" {
 		// Emphasis precedes color in the OOXML run-property sequence. Empty
 		// formatting keeps inherited styles and the established literal path.
@@ -256,14 +260,14 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color 
 
 func paragraph(style, text string) string {
 	var b strings.Builder
-	_ = writeParagraph(context.Background(), &b, style, text, "", false)
+	_ = writeParagraph(context.Background(), &b, style, text, "", false, false)
 	return b.String()
 }
 
 func (d *Document) body(ctx context.Context) (string, error) {
 	var b strings.Builder
 	b.WriteString(`<w:document xmlns:w="` + wordNS + `" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`)
-	for _, item := range d.blocks {
+	for i, item := range d.blocks {
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
@@ -271,11 +275,12 @@ func (d *Document) body(ctx context.Context) (string, error) {
 		case item.pageBreak:
 			b.WriteString(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
 		case item.table != nil:
-			if err := writeTable(ctx, &b, *item.table, d.options); err != nil {
+			spaceAfter := i+1 >= len(d.blocks) || !d.blocks[i+1].pageBreakBefore
+			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter); err != nil {
 				return "", err
 			}
 		default:
-			if err := writeParagraph(ctx, &b, item.style, item.text, "", false); err != nil {
+			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore); err != nil {
 				return "", err
 			}
 		}
@@ -291,7 +296,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options) error {
+func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter bool) error {
 	appearance := tableStyleFor(options)
 	width := 0
 	for _, w := range t.Widths {
@@ -343,7 +348,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			if header {
 				color = appearance.HeaderTextColor
 			}
-			if err := writeParagraph(ctx, b, style, c.Text, color, c.Bold); err != nil {
+			if err := writeParagraph(ctx, b, style, c.Text, color, c.Bold, false); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)
@@ -369,6 +374,11 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			return fmt.Errorf("document XML exceeds 128 MiB")
 		}
 	}
-	b.WriteString(`</w:tbl>` + paragraph("TableAfter", ""))
+	b.WriteString(`</w:tbl>`)
+	// A trailing spacer can itself spill onto a new page. The following heading
+	// owns its page boundary, so it must directly follow the table in this case.
+	if spaceAfter {
+		b.WriteString(paragraph("TableAfter", ""))
+	}
 	return nil
 }

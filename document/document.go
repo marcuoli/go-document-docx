@@ -52,9 +52,10 @@ type Table struct {
 }
 
 type block struct {
-	style, text string
-	table       *Table
-	pageBreak   bool
+	style, text     string
+	table           *Table
+	pageBreak       bool
+	pageBreakBefore bool
 }
 
 // Document owns an ordered snapshot of report blocks. It is not concurrency safe.
@@ -116,6 +117,14 @@ func (d *Document) Subtitle(text string) {
 // Heading appends a navigable heading at level 1, 2 or 3. Write rejects other levels.
 func (d *Document) Heading(text string, level int) {
 	d.blocks = append(d.blocks, block{style: fmt.Sprintf("Heading%d", level), text: text})
+}
+
+// HeadingOnNewPage appends a navigable level 1, 2 or 3 heading with a page
+// boundary on that paragraph. It avoids a break-only paragraph spilling after a
+// full table; the preceding table's spacer is omitted. Write rejects other levels.
+// Literal-text and keep-next behavior match Heading; no new section is created.
+func (d *Document) HeadingOnNewPage(text string, level int) {
+	d.blocks = append(d.blocks, block{style: fmt.Sprintf("Heading%d", level), text: text, pageBreakBefore: true})
 }
 
 // Paragraph appends literal prose. Newlines become soft breaks; tabs remain tabs.
