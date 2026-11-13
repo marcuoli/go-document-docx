@@ -13,7 +13,7 @@ import (
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
-// Compose appends a caller-supplied closing-page body after a page break, retaining
+// Compose appends a caller-supplied closing-page body on a new page, retaining
 // the main document's page geometry, headers, footers, theme and core properties.
 // It isolates imported style IDs, names and aliases, and remaps numbering,
 // bookmarks and transitive image/link relationships. Style run-property order is
@@ -207,11 +207,26 @@ func Compose(ctx context.Context, main, closing []byte) ([]byte, error) {
 	if section := opc.Child(body, opc.Word, "sectPr"); section != nil {
 		position = section.Index()
 	}
-	page := etree.NewElement("w:p")
-	page.CreateAttr("xmlns:w", opc.Word)
-	page.CreateElement("w:r").CreateElement("w:br").CreateAttr("w:type", "page")
-	body.InsertChildAt(position, page)
-	position++
+	// Keep pagination on the imported paragraph. A standalone break run may
+	// itself wrap past a page-filling table and then create an empty page.
+	var page *etree.Element
+	if len(content) > 0 && content[0].NamespaceURI() == opc.Word && content[0].Tag == "p" {
+		page = content[0]
+	} else {
+		// Table-first bodies need a minimal boundary paragraph; it starts on
+		// the next page rather than consuming room on the preceding page.
+		page = etree.NewElement("w:p")
+		page.CreateAttr("xmlns:w", opc.Word)
+		props := opc.Properties(page, "pPr")
+		spacing := opc.Ordered(props, "spacing", opc.ParagraphOrder)
+		spacing.CreateAttr("w:before", "0")
+		spacing.CreateAttr("w:after", "0")
+		spacing.CreateAttr("w:line", "1")
+		spacing.CreateAttr("w:lineRule", "exact")
+		body.InsertChildAt(position, page)
+		position++
+	}
+	opc.SetAttr(opc.Ordered(opc.Properties(page, "pPr"), "pageBreakBefore", opc.ParagraphOrder), opc.Word, "val", "1")
 	for _, child := range content {
 		body.InsertChildAt(position, child)
 		position++

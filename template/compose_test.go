@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	word "github.com/marcuoli/go-document-docx/document"
 	"github.com/marcuoli/go-document-docx/editing"
 	"github.com/marcuoli/go-document-docx/internal/opc"
 	"github.com/marcuoli/go-document-docx/report"
@@ -144,5 +145,142 @@ func TestTemplateImageAndUnsupportedClosingConstruct(t *testing.T) {
 	_ = bad.Write(context.Background(), &b)
 	if _, err := Compose(context.Background(), source.Bytes(), b.Bytes()); err == nil {
 		t.Fatal("unsupported notes silently imported")
+	}
+}
+func TestComposePaginatesImportedParagraphWithoutBreakRun(t *testing.T) {
+	main := examplePage(t, "First page", color.RGBA{R: 255, A: 255})
+	last := examplePage(t, "Last page", color.RGBA{B: 255, A: 255})
+	before := bytes.Clone(last)
+	out, err := Compose(t.Context(), main, last)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, last) {
+		t.Fatal("closing input changed")
+	}
+	pkg, err := opc.Read(t.Context(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, br := range opc.Elements(doc.Root(), opc.Word, "br") {
+		if opc.Attr(br, opc.Word, "type") == "page" {
+			t.Fatal("standalone break can spill onto an empty page")
+		}
+	}
+	breaks := opc.Elements(doc.Root(), opc.Word, "pageBreakBefore")
+	if len(breaks) != 1 || opc.Attr(breaks[0], opc.Word, "val") != "1" {
+		t.Fatal("appended paragraph does not start a page")
+	}
+	paragraph := breaks[0].Parent().Parent()
+	if !strings.Contains(paragraph.Text(), "Last page") {
+		text := ""
+		for _, node := range opc.Elements(paragraph, opc.Word, "t") {
+			text += node.Text()
+		}
+		if !strings.Contains(text, "Last page") {
+			t.Fatal("page break is detached from imported content")
+		}
+	}
+}
+
+func TestComposeTableFirstBodyUsesMinimalPaginatedBoundary(t *testing.T) {
+	main := examplePage(t, "First", color.RGBA{R: 255, A: 255})
+	d, err := word.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.AddTable(word.Table{Headers: []string{"Item"}, Widths: []int{4000}, Rows: [][]word.Cell{{{Text: "Closing table"}}}})
+	var source bytes.Buffer
+	if err := d.Write(t.Context(), &source); err != nil {
+		t.Fatal(err)
+	}
+	before := bytes.Clone(source.Bytes())
+	out, err := Compose(t.Context(), main, source.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(before, source.Bytes()) {
+		t.Fatal("table-first input changed")
+	}
+	pkg, err := opc.Read(t.Context(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	breaks := opc.Elements(doc.Root(), opc.Word, "pageBreakBefore")
+	if len(breaks) != 1 {
+		t.Fatal("table-first body has no single page boundary")
+	}
+	props := breaks[0].Parent()
+	spacing := opc.Child(props, opc.Word, "spacing")
+	if spacing == nil || opc.Attr(spacing, opc.Word, "line") != "1" || opc.Attr(spacing, opc.Word, "lineRule") != "exact" {
+		t.Fatal("table boundary consumes normal paragraph height")
+	}
+	if !strings.Contains(string(pkg.Parts["word/document.xml"]), "Closing table") {
+		t.Fatal("imported table missing")
+	}
+}
+func TestComposeEnablesAliasedPageBreakWithoutDuplicateValue(t *testing.T) {
+	for _, disabled := range []string{"0", "false"} {
+		t.Run(disabled, func(t *testing.T) {
+			main := examplePage(t, "First", color.RGBA{R: 255, A: 255})
+			last := examplePage(t, "Last", color.RGBA{B: 255, A: 255})
+			pkg, err := opc.Read(t.Context(), last)
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc, err := pkg.XML("word/document.xml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := opc.Child(doc.Root(), opc.Word, "body")
+			props := opc.Properties(body.ChildElements()[0], "pPr")
+			boundary := opc.Ordered(props, "pageBreakBefore", opc.ParagraphOrder)
+			boundary.Space = "alias"
+			boundary.CreateAttr("xmlns:alias", opc.Word)
+			boundary.CreateAttr("alias:val", disabled)
+			if err := pkg.SetXML("word/document.xml", doc); err != nil {
+				t.Fatal(err)
+			}
+			var source bytes.Buffer
+			if err := pkg.Write(t.Context(), &source); err != nil {
+				t.Fatal(err)
+			}
+			out, err := Compose(t.Context(), main, source.Bytes())
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := opc.Read(t.Context(), out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resultXML, err := result.XML("word/document.xml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			breaks := opc.Elements(resultXML.Root(), opc.Word, "pageBreakBefore")
+			if len(breaks) != 1 {
+				t.Fatal("page boundary duplicated")
+			}
+			count := 0
+			for _, a := range breaks[0].Attr {
+				if a.Key == "val" && a.NamespaceURI() == opc.Word {
+					count++
+					if a.Value != "1" {
+						t.Fatal("boundary remained disabled", a.Value)
+					}
+				}
+			}
+			if count != 1 {
+				t.Fatal("expanded value attribute duplicated", count)
+			}
+		})
 	}
 }
