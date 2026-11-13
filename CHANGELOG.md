@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
+
+- Keep Go source checkouts in LF format so the Windows formatter gate matches committed source and Linux CI.
 
 - Add opt-in ComposeWithOptions boundary-spacing trimming to prevent empty tail paragraphs from creating blank pages; preserve the existing Compose API/defaults and explicit content/breaks.
 
@@ -13,8 +15,6 @@
 - Add style-selected paragraph alignment for retained document packages, preserving literal text, fields and unchanged parts; demonstrate justified prose in a separate paragraph-alignment example.
 
 - Add validated literal table appearance options with owned settings and backward-compatible nil rendering; use a compact high-contrast grid in technical-report defaults while preserving cell colors, fill tones and exact text.
-
-## 0.3.0
 
 - Add optional validated RGB text colors and bold emphasis for literal document cells, preserving inherited styles and existing fill tones.
 - Add literal purpose paragraphs with keep-next/keep-lines hints so table introductions can remain with their data.

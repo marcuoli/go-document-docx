@@ -6,6 +6,7 @@ Checked on 2026-11-10 for Go 1.27.3. Final compiler/graph/target and advisory re
 | --- | --- | --- |
 | github.com/marcuoli/go-atomicfile | v0.1.1 | First-party atomic publication |
 | github.com/mmonterroca/docxgo/v2 | v2.16.0 | General Word model, images, metadata, sections, serialization and supported text replacement; declared MIT |
+| github.com/go-ole/go-ole | v1.3.0 | Optional Windows COM automation through the official upstream release; MIT |
 | github.com/beevik/etree | v1.8.1 | Namespace-preserving XML tree operations; BSD 2-Clause |
 | golang.org/x/net | v0.62.0 | HTML parser; BSD 3-Clause |
 
@@ -20,3 +21,5 @@ Other candidates were assessed before implementation. The narrower high-level ta
 All dependencies are consumed as official releases with signed module sums. No local replacement, fork, vendored modification, cache patch or build-time rewriting is part of final validation.
 
 Qualification on 2026-11-11 retains the required Go 1.27.3 toolchain. govulncheck reports GO-2026-6859 (net/http MaxBytesReader header race), fixed in Go 1.27.4, at required-module level; no affected imported package or called symbol was reported for this module or either example binary. This is a bounded scanner result, not proof of exploitability or universal absence of vulnerabilities. No compiler migration is included in the Word compatibility patch. Recheck this advisory at the next configured build review.
+
+The optional Windows-only Word package uses the official go-ole v1.3.0 release without CGO. Upstream source and license: https://github.com/go-ole/go-ole/tree/v1.3.0 . The default portable renderer does not invoke Word. This dependency is not a replacement document engine.
