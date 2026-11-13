@@ -88,3 +88,7 @@ Implementation uses the official MIT-licensed github.com/go-ole/go-ole v1.3.0 re
 - https://learn.microsoft.com/en-us/office/vba/api/word.application.automationsecurity
 
 Caption indexes use TOC fields too. Refreshing TablesOfFigures alongside TablesOfContents clears stale caption bookmark references; an index with no matching captions shows Word's empty-index message.
+
+## Optional spacing at composition boundaries
+
+Compose keeps its existing signature and retains main-document tail spacing. ComposeWithOptions accepts ComposeOptions{TrimTrailingSpacing: true} to omit trailing formatting-only paragraphs immediately before the imported-page boundary. This prevents empty padding paragraphs from spilling onto a blank page after a variable-length contents page. Explicit page/section properties, runs, bookmarks, drawings and unrecognized content are retained. Inherited paragraph-style pagination is not inspected; opt in only when the main template's tail is layout padding. Neither source byte slice is changed.

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/beevik/etree"
 	word "github.com/marcuoli/go-document-docx/document"
 	"github.com/marcuoli/go-document-docx/editing"
 	"github.com/marcuoli/go-document-docx/internal/opc"
@@ -282,5 +283,135 @@ func TestComposeEnablesAliasedPageBreakWithoutDuplicateValue(t *testing.T) {
 				t.Fatal("expanded value attribute duplicated", count)
 			}
 		})
+	}
+}
+
+func TestComposeOptionalTailSpacingPreservesContentAndDefault(t *testing.T) {
+	main := examplePage(t, "Main content", color.RGBA{R: 255, A: 255})
+	closing := examplePage(t, "Following content", color.RGBA{B: 255, A: 255})
+	for _, kind := range []string{"spacing", "run", "bookmark", "page", "section", "revision", "property-comment", "extension"} {
+		t.Run(kind, func(t *testing.T) {
+			pkg, err := opc.Read(t.Context(), main)
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc, err := pkg.XML("word/document.xml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			body := opc.Child(doc.Root(), opc.Word, "body")
+			section := opc.Child(body, opc.Word, "sectPr")
+			position := len(body.Child)
+			if section != nil {
+				position = section.Index()
+			}
+			tail := etree.NewElement("w:p")
+			tail.CreateAttr("xmlns:w", opc.Word)
+			tail.CreateAttr("w:rsidR", "00112233")
+			pr := tail.CreateElement("w:pPr")
+			pr.CreateElement("w:spacing").CreateAttr("w:after", "120")
+			switch kind {
+			case "run":
+				tail.CreateElement("w:r").CreateElement("w:tab")
+			case "bookmark":
+				start := tail.CreateElement("w:bookmarkStart")
+				start.CreateAttr("w:id", "100")
+				start.CreateAttr("w:name", "tail_content")
+				tail.CreateElement("w:bookmarkEnd").CreateAttr("w:id", "100")
+			case "page":
+				pr.CreateElement("w:pageBreakBefore")
+			case "revision":
+				pr.CreateElement("w:rPr").CreateElement("w:ins").CreateAttr("w:id", "7")
+			case "property-comment":
+				pr.AddChild(etree.NewComment("retain paragraph metadata"))
+			case "extension":
+				property := pr.CreateElement("w:rPr")
+				property.CreateElement("ext:payload").CreateAttr("xmlns:ext", "urn:example:format-extension")
+			case "section":
+				pr.CreateElement("w:sectPr")
+			}
+			body.InsertChildAt(position, tail)
+			if err := pkg.SetXML("word/document.xml", doc); err != nil {
+				t.Fatal(err)
+			}
+			var input bytes.Buffer
+			if err := pkg.Write(t.Context(), &input); err != nil {
+				t.Fatal(err)
+			}
+			frozen := bytes.Clone(input.Bytes())
+			for _, trim := range []bool{false, true} {
+				var result []byte
+				if trim {
+					result, err = ComposeWithOptions(t.Context(), input.Bytes(), closing, ComposeOptions{TrimTrailingSpacing: true})
+				} else {
+					result, err = Compose(t.Context(), input.Bytes(), closing)
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				out, err := opc.Read(t.Context(), result)
+				if err != nil {
+					t.Fatal(err)
+				}
+				xml, err := out.XML("word/document.xml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				found := false
+				for _, p := range opc.Elements(xml.Root(), opc.Word, "p") {
+					if opc.Attr(p, opc.Word, "rsidR") == "00112233" {
+						found = true
+					}
+				}
+				want := !trim || kind != "spacing"
+				if found != want {
+					t.Fatalf("trim=%t kind=%s tail retained=%t, want=%t", trim, kind, found, want)
+				}
+				if !bytes.Equal(input.Bytes(), frozen) {
+					t.Fatal("source input mutated")
+				}
+			}
+		})
+	}
+}
+
+type cancellingTailContext struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancellingTailContext) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+func TestTrimTailIsCancellableAndRetainsStructuralMetadata(t *testing.T) {
+	for _, cancel := range []bool{false, true} {
+		body := etree.NewElement("w:body")
+		body.CreateAttr("xmlns:w", opc.Word)
+		content := body.CreateElement("w:p")
+		content.CreateElement("w:r").CreateElement("w:t").SetText("Retained text")
+		for i := 0; i < 1000; i++ {
+			body.CreateElement("w:p")
+			body.AddChild(etree.NewText("\n"))
+		}
+		section := body.CreateElement("w:sectPr")
+		var ctx context.Context = t.Context()
+		if cancel {
+			ctx = &cancellingTailContext{Context: ctx, remaining: 3}
+		}
+		err := trimTrailingSpacing(ctx, body)
+		if cancel {
+			if err != context.Canceled || len(body.ChildElements()) != 1002 {
+				t.Fatal("tail scan ignored cancellation or changed content", err)
+			}
+		} else {
+			elements := body.ChildElements()
+			if err != nil || len(elements) != 2 || elements[0] != content || elements[1] != section || section.Parent() != body {
+				t.Fatal("tail/section ownership mismatch", err)
+			}
+		}
 	}
 }

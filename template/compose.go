@@ -22,6 +22,22 @@ import (
 // or reference fields are rejected explicitly; this is not an arbitrary-file merger.
 // Neither input is changed and no external relationship is fetched.
 func Compose(ctx context.Context, main, closing []byte) ([]byte, error) {
+	return ComposeWithOptions(ctx, main, closing, ComposeOptions{})
+}
+
+// ComposeOptions controls opt-in layout adjustments at an imported-page boundary.
+type ComposeOptions struct {
+	// TrimTrailingSpacing removes trailing main-body paragraphs containing only
+	// formatting properties. Text, runs, bookmarks, drawings and explicit page or
+	// section properties remain. Existing Compose calls retain all spacing.
+	TrimTrailingSpacing bool
+}
+
+// ComposeWithOptions has Compose's ownership and import restrictions, with
+// explicit optional trimming of formatting-only tail paragraphs before the new page.
+// It does not change either input or inspect inherited paragraph-style pagination.
+func ComposeWithOptions(ctx context.Context, main, closing []byte, options ComposeOptions) ([]byte, error) {
+
 	dest, err := opc.Read(ctx, main)
 	if err != nil {
 		return nil, err
@@ -201,6 +217,11 @@ func Compose(ctx context.Context, main, closing []byte) ([]byte, error) {
 			}
 		}
 		content = append(content, cloned)
+	}
+	if options.TrimTrailingSpacing {
+		if err := trimTrailingSpacing(ctx, body); err != nil {
+			return nil, err
+		}
 	}
 	// A body-level sectPr must remain last. The page break and imported body precede it.
 	position := len(body.Child)
@@ -467,4 +488,98 @@ func checkComplexFields(root *etree.Element) error {
 		return fmt.Errorf("unbalanced closing field")
 	}
 	return nil
+}
+
+func trimTrailingSpacing(ctx context.Context, body *etree.Element) error {
+	end := len(body.Child)
+	i := end - 1
+	// The final section and its following XML whitespace remain at the end.
+	for i >= 0 {
+		if whitespace, ok := body.Child[i].(*etree.CharData); ok && strings.TrimSpace(whitespace.Data) == "" {
+			i--
+			continue
+		}
+		break
+	}
+	if i >= 0 {
+		if section, ok := body.Child[i].(*etree.Element); ok && section.NamespaceURI() == opc.Word && section.Tag == "sectPr" {
+			end = i
+			i--
+		} else {
+			i = len(body.Child) - 1
+		}
+	}
+	start := end
+	removed := false
+	for ; i >= 0; i-- {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if whitespace, ok := body.Child[i].(*etree.CharData); ok && strings.TrimSpace(whitespace.Data) == "" {
+			start = i
+			continue
+		}
+		p, ok := body.Child[i].(*etree.Element)
+		if !ok || !spacingParagraph(p) {
+			break
+		}
+		start = i
+		removed = true
+	}
+	if !removed {
+		return ctx.Err()
+	}
+	suffix := append([]etree.Token(nil), body.Child[end:]...)
+	// Pop from the end and restore the small suffix once. Repeated removal in
+	// front of retained whitespace/section tokens would shift them quadratically.
+	for len(body.Child) > start {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		body.RemoveChildAt(len(body.Child) - 1)
+	}
+	for _, token := range suffix {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		body.AddChild(token)
+	}
+	return ctx.Err()
+}
+
+func spacingParagraph(p *etree.Element) bool {
+	if p.NamespaceURI() != opc.Word || p.Tag != "p" {
+		return false
+	}
+	for _, child := range p.Child {
+		switch value := child.(type) {
+		case *etree.CharData:
+			if strings.TrimSpace(value.Data) != "" {
+				return false
+			}
+		case *etree.Element:
+			if value.NamespaceURI() != opc.Word || value.Tag != "pPr" {
+				return false
+			}
+			for _, token := range value.Child {
+				if whitespace, ok := token.(*etree.CharData); ok && strings.TrimSpace(whitespace.Data) == "" {
+					continue
+				}
+				property, ok := token.(*etree.Element)
+				if !ok || property.NamespaceURI() != opc.Word || len(property.Child) > 0 {
+					return false
+				}
+				// Paragraph-mark rPr can contain revisions and extension content. Only
+				// known leaf spacing/style properties are disposable at this boundary.
+				switch property.Tag {
+				case "pStyle", "jc", "spacing", "ind":
+				default:
+					return false
+				}
+			}
+		default:
+			return false
+		}
+	}
+	return true
 }

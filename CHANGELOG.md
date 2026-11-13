@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add opt-in ComposeWithOptions boundary-spacing trimming to prevent empty tail paragraphs from creating blank pages; preserve the existing Compose API/defaults and explicit content/breaks.
+
 - Add optional Windows desktop Word TOC/caption-index refresh as a publication.Source decorator with isolated staging, macro-disabled opening, exact error propagation and explicit native coverage; normal rendering stays portable.
 
 - Add HeadingOnNewPage with a paragraph-bound page break and omit a preceding table spacer at that boundary, avoiding blank pages after full tables while retaining existing Heading/PageBreak behavior.
