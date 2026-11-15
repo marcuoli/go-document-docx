@@ -70,6 +70,20 @@ Use the document.Document method HeadingOnNewPage(text, level) for a section tha
 The boundary belongs to the heading, avoiding an empty break/spacer paragraph
 after a full table. Existing Heading and PageBreak calls retain their behavior.
 
+## Literal code tables
+
+Use `doc.CodeTable(header, code)` on a `document.Document` for caller-authored source:
+
+```go
+doc.CodeTable("SQL source", "CREATE TABLE example_items (\n\tid NUMBER\n);")
+```
+
+The full-width, single-column table has a repeated bold header and one splittable body row. Both use white Consolas text on black at the configured table font size. Code is left aligned, wraps naturally and has no fixed row height, line numbering, translation, execution or truncation. Existing table appearances and `editing.Code` remain unchanged. The header is literal caller text, including localization; it creates no heading/TOC entry. Empty header/body strings are supported.
+
+Spaces, indentation, tabs, blank lines and valid Unicode remain literal. CRLF/CR normalize to visual line breaks. The renderer preserves long lines and text beyond 32,767 characters; font coverage and actual wrapping/pagination depend on the installed fonts and reader. `Write` rejects invalid UTF-8/XML characters and aggregate text above 64 MiB or expanded document XML above 128 MiB before writing bytes. Construction and serialization use memory; this API does not read or stream database CLOBs. Callers own source retrieval, completeness, budgets and atomic publication.
+
+Run `go run ./examples/code-table <output.docx>` for a synthetic multipage example. [Code-table qualification](docs/validation/code-tables.md) records rendered samples separately from structural tests; no universal reader or arbitrary-size source guarantee is implied.
+
 ## Optional desktop Word TOC refresh
 
 Import word and wrap an existing publication.Source with word.WithUpdatedFields(source, word.Options{}), then pass it to publication.Save. The decorator populates existing tables of contents and caption indexes, repaginates, refreshes TOC page numbers and saves before the destination is installed. It does not create a TOC or update arbitrary fields. Word may rewrite package XML, pagination and cached fields; this mode does not promise byte-identical template parts.

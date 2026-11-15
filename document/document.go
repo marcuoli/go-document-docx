@@ -56,6 +56,7 @@ type block struct {
 	table           *Table
 	pageBreak       bool
 	pageBreakBefore bool
+	codeTable       bool
 }
 
 // Document owns an ordered snapshot of report blocks. It is not concurrency safe.

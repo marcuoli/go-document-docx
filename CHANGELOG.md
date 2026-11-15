@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.0
+
+- Add literal CodeTable blocks to the small document API: repeated bold headers, white Consolas text on black, natural wrapping and splittable body rows; preserve existing table styles and text/publication limits.
+
 ## 0.3.0
 
 - Keep Go source checkouts in LF format so the Windows formatter gate matches committed source and Linux CI.

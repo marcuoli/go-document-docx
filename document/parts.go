@@ -9,7 +9,11 @@ func (d *Document) fonts() string {
 	var b strings.Builder
 	b.WriteString(`<w:fonts xmlns:w="` + wordNS + `">`)
 	seen := map[string]bool{}
-	for _, name := range []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont, tableStyleFor(d.options).HeaderFont} {
+	names := []string{d.options.Font, d.options.HeadingFont, d.options.SubheadingFont, tableStyleFor(d.options).HeaderFont}
+	if d.hasCodeTables() {
+		names = append(names, "Consolas")
+	}
+	for _, name := range names {
 		if seen[name] {
 			continue
 		}
@@ -52,6 +56,17 @@ func (d *Document) styles() string {
 	base += style("TableHeader", tableStyleFor(o).HeaderFont, o.TableSize, `<w:keepNext/>`+headerSpacing, `<w:b/>`)
 	base += style("TableAfter", o.Font, 12, `<w:spacing w:after="80" w:line="80" w:lineRule="exact"/>`, "")
 	base += style("Footer", o.Font, 16, `<w:jc w:val="right"/>`, "")
+	if d.hasCodeTables() {
+		// Separate styles keep literal code out of table-data typography and the
+		// outline. Body pagination must permit a single long code cell to split.
+		for _, id := range []string{"CodeText", "CodeHeader"} {
+			keep, bold := "", ""
+			if id == "CodeHeader" {
+				keep, bold = `<w:keepNext/>`, `<w:b/>`
+			}
+			base += fmt.Sprintf(`<w:style w:type="paragraph" w:styleId="%s"><w:name w:val="%s"/><w:basedOn w:val="Normal"/><w:pPr>%s<w:widowControl w:val="0"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="left"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/>%s<w:color w:val="FFFFFF"/><w:sz w:val="%d"/></w:rPr></w:style>`, id, id, keep, bold, o.TableSize)
+		}
+	}
 	return base + `</w:styles>`
 }
 

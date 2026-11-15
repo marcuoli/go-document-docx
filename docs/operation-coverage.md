@@ -10,6 +10,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 | Font/effects/alignment/spacing/indent | ParagraphOptions, TextStyle, Paragraph.Native | Distances in twips, sizes in half-points; nil effects inherit, explicit false/zero override. |
 | Headings and progress | editing.Heading; HeadingProgress | Levels 1–9, explicit page breaks, black default headings and per-editor notifications. |
 | Styled body topics and code | ParagraphOptions; editing.Code | Separate body formatting from navigable headings. Code remains literal. |
+| Literal code tables | document.Document.CodeTable | Repeated bold header and white Consolas text on black; splittable body, natural wrapping, no truncation/I/O. Existing 64 MiB aggregate-text/128 MiB expanded-XML bounds apply; fonts and pagination are reader-dependent. |
 | Lists and numbered styles | editing.List | Native numbering, separate bullet/decimal instances, levels 0–8. |
 | Captions and object inventories | editing.Caption; caller-owned inventory | Counters start at one; table/figure labels come from the caller. |
 | Bookmarks and internal/external links | Paragraph.Bookmark/Link; Table.Link | Unique names and valid targets; external web/mail relationships are never fetched. |

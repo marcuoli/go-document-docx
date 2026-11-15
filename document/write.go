@@ -276,7 +276,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 			b.WriteString(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
 		case item.table != nil:
 			spaceAfter := i+1 >= len(d.blocks) || !d.blocks[i+1].pageBreakBefore
-			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter); err != nil {
+			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter, item.codeTable); err != nil {
 				return "", err
 			}
 		default:
@@ -296,8 +296,17 @@ func (d *Document) body(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter bool) error {
+func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter, code bool) error {
 	appearance := tableStyleFor(options)
+	if code {
+		// The code palette is local to this block; ordinary table defaults and
+		// caller appearance values must not be changed by a code table.
+		appearance.HeaderFill = "000000"
+		appearance.BodyFill = "000000"
+		appearance.AlternateFill = "000000"
+		appearance.HeaderTextColor = "FFFFFF"
+		appearance.VerticalAlignment = "top"
+	}
 	width := 0
 	for _, w := range t.Widths {
 		width += w
@@ -320,7 +329,14 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 	}
 	b.WriteString(`</w:tblGrid>`)
 	row := func(cells []Cell, header bool, index int) error {
-		b.WriteString(`<w:tr><w:trPr><w:cantSplit/>`)
+		b.WriteString(`<w:tr><w:trPr>`)
+		if code && !header {
+			// Unlike a short data row, source code can be many pages long.
+			// Explicitly allow splitting instead of keeping the whole cell together.
+			b.WriteString(`<w:cantSplit w:val="0"/>`)
+		} else {
+			b.WriteString(`<w:cantSplit/>`)
+		}
 		if header {
 			b.WriteString(`<w:tblHeader/>`)
 		}
@@ -345,6 +361,13 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 				style = "TableHeader"
 			}
 			color := c.TextColor
+			if code {
+				style = "CodeText"
+				if header {
+					style = "CodeHeader"
+				}
+				color = "FFFFFF"
+			}
 			if header {
 				color = appearance.HeaderTextColor
 			}
