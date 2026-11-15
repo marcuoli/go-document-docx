@@ -1,5 +1,34 @@
 # Released dependency assessment
 
+## Current build selection
+
+Refreshed on 2026-11-15 against the official Go feed/history and upstream stable
+tags. The current module and build requirement is Go 1.27.4; validation scripts
+and CI use that version. The standalone vulnerability scanner is v1.9.0.
+
+The direct library releases below remain current: etree v1.8.1, go-ole v1.3.0,
+go-atomicfile v0.1.1, docxgo/v2 v2.16.0 and x/net v0.62.0. Upstream tag review
+found no newer stable major successor for these module paths. Existing licenses
+and the document-engine provenance qualification below remain applicable.
+
+The complete selected upstream graph now uses x/crypto v0.59.0, x/sys v0.50.0,
+x/term v0.48.0, x/text v0.44.0 and x/mod v0.43.0; x/sync v0.25.0 and x/tools
+v0.52.0 enter through their upstream graph. Explicit indirect constraints keep
+otherwise unimported paths current. An ordinary `go mod tidy` removes those
+constraints and restores older versions from x/net's released go.mod; the
+refresh therefore runs tidy first, then deliberately restores current official
+graph constraints through Go module tooling. These pins add no compiled imports
+and do not modify any dependency implementation or manifest.
+
+Go 1.27.4 full tests, race tests, vet/stdversion, module verification, example
+builds and v1.9.0 source/binary scans passed on Windows amd64. The synthetic
+Windows integration-tag Word TOC test also passed. Current scans reported no
+vulnerabilities, including no remaining required-module GO-2026-6859 result.
+This describes the tested configuration, not universal security or reader
+qualification. Dated historical results below retain their original meaning.
+
+## Historical qualification
+
 Checked on 2026-11-10 for Go 1.27.3. Final compiler/graph/target and advisory results are retained with validation evidence.
 
 | Module | Selected release | Responsibility and license |

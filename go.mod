@@ -1,6 +1,6 @@
 module github.com/marcuoli/go-document-docx
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/beevik/etree v1.8.1
@@ -10,4 +10,12 @@ require (
 	golang.org/x/net v0.62.0
 )
 
-require golang.org/x/sys v0.49.0 // indirect
+// Keep the complete upstream module graph current, including unimported paths.
+// Tidy alone removes these graph-only constraints inherited through x/net.
+require (
+	golang.org/x/crypto v0.59.0 // indirect
+	golang.org/x/mod v0.43.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/term v0.48.0 // indirect
+	golang.org/x/text v0.44.0 // indirect
+)

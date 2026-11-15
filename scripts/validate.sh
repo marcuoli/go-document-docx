@@ -8,7 +8,7 @@ export GOWORK=off GOTOOLCHAIN=local GOFLAGS=-mod=readonly CGO_ENABLED=0
 output="$project/artifacts/runs/validate-$run"
 mkdir -p "$TMPDIR" "$GOTMPDIR" "$GOCACHE" "$GOMODCACHE" "$output"
 cd "$(dirname "$0")/.."
-test "$(go env GOVERSION)" = go1.27.3
+test "$(go env GOVERSION)" = go1.27.4
 test -z "$(gofmt -l .)"
 go test -count=1 ./...
 go vet ./...
@@ -31,9 +31,9 @@ for example in report authoring; do
  binary="$output/$example-example"
  go build -trimpath -buildvcs=false -o "$binary" "./examples/$example"
  go version -m "$binary" > "$output/$example-build-metadata.txt"
- if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 -mode=binary "$binary"; fi
+ if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary "$binary"; fi
 done
 go env -json GOVERSION GOOS GOARCH CGO_ENABLED GOWORK GOFLAGS > "$output/build-settings.json"
 go list -m -json all > "$output/modules.json"
-if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...; fi
+if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...; fi
 printf 'Validated both native examples and source. Evidence: %s\n' "$output"

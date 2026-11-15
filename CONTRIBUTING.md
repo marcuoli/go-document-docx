@@ -1,6 +1,6 @@
 # Contributing
 
-Use Go 1.27.3 and functional package imports. Keep changes focused and use only official compatible releases.
+Use Go 1.27.4 and functional package imports. Keep changes focused and use only official compatible releases.
 
 ## Comment convention
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Require and validate Go 1.27.4, refresh all selected upstream module versions and the vulnerability scanner, and distinguish independently tested source compatibility from the shipping module/build requirement.
+
 ## 0.4.0
 
 - Add literal CodeTable blocks to the small document API: repeated bold headers, white Consolas text on black, natural wrapping and splittable body rows; preserve existing table styles and text/publication limits.

@@ -2,7 +2,7 @@
 
 This is a reusable document library. New APIs live in cohesive functional directories, with focused tests and runnable examples under examples. Keep product policy and application identities outside this repository.
 
-Use Go 1.27.3 and official released dependencies. Reuse shared atomic operations. Do not modify or copy third-party dependency implementations. Comments and examples must exclude originating or consuming application names, private endpoints, customer material and secrets.
+Use Go 1.27.4 and official released dependencies. Reuse shared atomic operations. Do not modify or copy third-party dependency implementations. Comments and examples must exclude originating or consuming application names, private endpoints, customer material and secrets.
 
 Every exported symbol needs useful Godoc starting with its name. Explain units, ownership, mutation, errors, concurrency, limitations and partial success where relevant. Explain non-obvious choices beside the implementation and update nearby comments when behavior changes. See CONTRIBUTING.md.
 
