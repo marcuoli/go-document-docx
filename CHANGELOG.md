@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.1
 
 - Require and validate Go 1.27.4, refresh all selected upstream module versions and the vulnerability scanner, and distinguish independently tested source compatibility from the shipping module/build requirement.
 
