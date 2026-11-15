@@ -159,6 +159,11 @@ func (d *Document) validate(ctx context.Context) error {
 				if err := validateCellTextColor(c.TextColor); err != nil {
 					return err
 				}
+				switch c.Alignment {
+				case "", "left", "center", "right", "justify":
+				default:
+					return fmt.Errorf("invalid cell paragraph alignment")
+				}
 				if err := check(c.Text); err != nil {
 					return err
 				}
@@ -292,12 +297,26 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold 
 }
 
 func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string) error {
-	if len(cell.Runs) == 0 {
+	if len(cell.Runs) == 0 && cell.Alignment == "" {
 		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false)
 	}
-	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/></w:pPr>`)
+	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
+	if cell.Alignment != "" {
+		// Alignment is an allowlisted literal paragraph override, independent of
+		// content and run formatting. Empty keeps inherited styles byte-for-byte.
+		alignment := cell.Alignment
+		if alignment == "justify" {
+			alignment = "both" // OOXML names justified paragraph alignment "both".
+		}
+		b.WriteString(`<w:jc w:val="` + alignment + `"/>`)
+	}
+	b.WriteString(`</w:pPr>`)
+	runs := cell.Runs
+	if len(runs) == 0 {
+		runs = []CellRun{{Text: cell.Text}}
+	}
 	previousCR := false
-	for _, run := range cell.Runs {
+	for _, run := range runs {
 		// Run colors override presentation only. In particular, a literal label
 		// cannot imply availability or change another run's inherited color.
 		runColor := run.TextColor

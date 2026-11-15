@@ -12,6 +12,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 | Styled body topics and code | ParagraphOptions; editing.Code | Separate body formatting from navigable headings. Code remains literal. |
 | Literal code tables | document.Document.CodeTable | Repeated bold header and white Consolas text on black; splittable body, natural wrapping, no truncation/I/O. Existing 64 MiB aggregate-text/128 MiB expanded-XML bounds apply; fonts and pagination are reader-dependent. |
 | Mixed-color literal cells | document.Cell.Runs; document.CellRun | Ordered spans with inherited/overridden RGB colors and cell-wide bold; preserves literal line breaks and caller-owned labels. Empty Runs retains Cell.Text; nonempty Runs requires empty Text. Cell is slice-bearing and not comparable. |
+| Literal cell paragraph alignment | document.Cell.Alignment | Empty inherits; explicit left/center/right/justify applies to Text or Runs without parsing values, changing sibling/header styles or affecting CodeTable policy. Invalid values fail before output. |
 | Lists and numbered styles | editing.List | Native numbering, separate bullet/decimal instances, levels 0–8. |
 | Captions and object inventories | editing.Caption; caller-owned inventory | Counters start at one; table/figure labels come from the caller. |
 | Bookmarks and internal/external links | Paragraph.Bookmark/Link; Table.Link | Unique names and valid targets; external web/mail relationships are never fetched. |

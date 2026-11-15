@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.0
+
+- Add explicit literal Cell.Alignment paragraph overrides for text and rich runs, preserving inherited defaults and code-table formatting without interpreting values.
+
 ## 0.5.0
 
 - Add owned literal Cell.Runs spans with independent RGB colors and inherited cell emphasis, preserving the existing Cell.Text path and table engine; reject ambiguous content before output. Cell now contains a slice, requiring keyed literals and field-aware comparisons.

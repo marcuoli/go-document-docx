@@ -114,6 +114,18 @@ Set `options.TableStyle = nil` to retain the literal renderer's historical appea
 
 ## Paragraph alignment
 
+Literal table cells accept `document.Cell{Text: "1,234.50", Alignment: "right"}`.
+`Alignment` supports `left`, `center`, `right` and `justify`, for both `Text` and
+`Runs`. Empty emits no direct override and preserves existing style inheritance
+and output. Invalid values fail `Write` before output. Alignment applies to the
+whole cell paragraph, leaves headers and sibling cells alone, and never parses
+or reformats values. `AddTable` owns the supplied alignment value. Code tables
+retain their existing left-aligned behavior. The runnable
+`examples/cell-alignment` sample demonstrates text, rich runs and inherited
+defaults; final wrapping and justification remain reader-dependent.
+See [cell-alignment qualification](docs/validation/cell-alignment.md) for tested
+conditions and reader limits.
+
 Use formatting.AlignParagraphs(ctx, source, "justify", "", "Normal", "Lead") to justify selected prose without changing heading or data-cell styles. The empty style ID selects paragraphs without an explicit style. Matching prose inside layout tables is included; headers and footers remain untouched. Other supported alignments are left, center and right.
 
 Style IDs are exact. Apply alignment before Compose renames imported styles, or supply the retained document's actual IDs. This targeted formatter preserves text, fields and unchanged package parts rather than loading and rewriting the complete native authoring model. The paragraph-alignment example demonstrates the publication path without changing the small report example; editing.ParagraphOptions remains available for newly authored native content.

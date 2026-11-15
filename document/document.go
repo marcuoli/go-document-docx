@@ -44,6 +44,11 @@ type Cell struct {
 	// Write rejects ambiguous input before output. AddTable deep-copies Runs.
 	// Cell contains a slice: use keyed literals and compare fields as appropriate.
 	Runs []CellRun
+	// Alignment optionally overrides this cell paragraph with "left", "center",
+	// "right" or "justify", for either Text or Runs. Empty preserves the style's
+	// alignment and existing output. Write rejects other values before output.
+	// Alignment never parses or reformats text; AddTable copies the value.
+	Alignment string
 }
 
 // Table contains a repeating header and explicit column widths in twips.
