@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.0
+
+- Add owned literal Cell.Runs spans with independent RGB colors and inherited cell emphasis, preserving the existing Cell.Text path and table engine; reject ambiguous content before output. Cell now contains a slice, requiring keyed literals and field-aware comparisons.
+
 ## 0.4.1
 
 - Require and validate Go 1.27.4, refresh all selected upstream module versions and the vulnerability scanner, and distinguish independently tested source compatibility from the shipping module/build requirement.

@@ -39,6 +39,11 @@ type Cell struct {
 	TextColor string
 	// Bold adds direct emphasis; false preserves the paragraph style's emphasis.
 	Bold bool
+	// Runs optionally supplies ordered literal spans within one cell paragraph.
+	// Empty/nil Runs uses Text as before. Nonempty Runs requires empty Text;
+	// Write rejects ambiguous input before output. AddTable deep-copies Runs.
+	// Cell contains a slice: use keyed literals and compare fields as appropriate.
+	Runs []CellRun
 }
 
 // Table contains a repeating header and explicit column widths in twips.
@@ -153,6 +158,9 @@ func (d *Document) AddTable(table Table) {
 	owned.Rows = make([][]Cell, len(table.Rows))
 	for i, row := range table.Rows {
 		owned.Rows[i] = slices.Clone(row)
+		for j := range owned.Rows[i] {
+			owned.Rows[i][j].Runs = slices.Clone(row[j].Runs)
+		}
 	}
 	d.blocks = append(d.blocks, block{table: &owned})
 }

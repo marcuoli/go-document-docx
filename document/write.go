@@ -156,21 +156,42 @@ func (d *Document) validate(ctx context.Context) error {
 				if c.Tone != Plain && c.Tone != Difference && c.Tone != Unavailable {
 					return fmt.Errorf("unsupported cell tone")
 				}
-				if c.TextColor != "" {
-					if len(c.TextColor) != 6 {
-						return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
-					}
-					if _, err := hex.DecodeString(c.TextColor); err != nil {
-						return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
-					}
+				if err := validateCellTextColor(c.TextColor); err != nil {
+					return err
 				}
 				if err := check(c.Text); err != nil {
 					return err
+				}
+				if len(c.Runs) > 0 && c.Text != "" {
+					return fmt.Errorf("cell Text and nonempty Runs are mutually exclusive")
+				}
+				for _, run := range c.Runs {
+					if err := ctx.Err(); err != nil {
+						return err
+					}
+					if err := validateCellTextColor(run.TextColor); err != nil {
+						return err
+					}
+					if err := check(run.Text); err != nil {
+						return err
+					}
 				}
 			}
 		}
 	}
 	return nil
+}
+
+func validateCellTextColor(color string) error {
+	if color == "" {
+		return nil
+	}
+	if len(color) == 6 {
+		if _, err := hex.DecodeString(color); err == nil {
+			return nil
+		}
+	}
+	return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
 }
 
 func escape(text string) string {
@@ -238,7 +259,19 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color 
 	if pageBreakBefore {
 		b.WriteString(`<w:pageBreakBefore/>`)
 	}
-	b.WriteString(`</w:pPr><w:r>`)
+	b.WriteString(`</w:pPr>`)
+	if err := writeRun(ctx, b, text, color, bold); err != nil {
+		return err
+	}
+	b.WriteString(`</w:p>`)
+	return nil
+}
+
+func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	b.WriteString(`<w:r>`)
 	if bold || color != "" {
 		// Emphasis precedes color in the OOXML run-property sequence. Empty
 		// formatting keeps inherited styles and the established literal path.
@@ -254,7 +287,37 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color 
 	if err := writeText(ctx, b, text); err != nil {
 		return err
 	}
-	b.WriteString(`</w:r></w:p>`)
+	b.WriteString(`</w:r>`)
+	return nil
+}
+
+func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string) error {
+	if len(cell.Runs) == 0 {
+		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false)
+	}
+	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/></w:pPr>`)
+	previousCR := false
+	for _, run := range cell.Runs {
+		// Run colors override presentation only. In particular, a literal label
+		// cannot imply availability or change another run's inherited color.
+		runColor := run.TextColor
+		if runColor == "" {
+			runColor = color
+		}
+		text := run.Text
+		// Formatting boundaries must not turn one CRLF into two line breaks.
+		// Empty spans retain the pending CR state until the next text arrives.
+		if previousCR && strings.HasPrefix(text, "\n") {
+			text = text[1:]
+		}
+		if run.Text != "" {
+			previousCR = strings.HasSuffix(run.Text, "\r")
+		}
+		if err := writeRun(ctx, b, text, runColor, cell.Bold); err != nil {
+			return err
+		}
+	}
+	b.WriteString(`</w:p>`)
 	return nil
 }
 
@@ -371,7 +434,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			if header {
 				color = appearance.HeaderTextColor
 			}
-			if err := writeParagraph(ctx, b, style, c.Text, color, c.Bold, false); err != nil {
+			if err := writeCellParagraph(ctx, b, style, c, color); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

@@ -70,6 +70,32 @@ Literal document cells accept an optional six-digit RGB TextColor, without a lea
 
 Cells can also opt into Bold emphasis. False preserves inherited emphasis; true emits direct bold before color in the run-property sequence. Literal labels, including angle brackets, remain text. The report example demonstrates colored checkmarks and bold colored placeholders; interpretation remains caller-owned.
 
+For independent colors within one literal cell paragraph, use ordered runs:
+
+```go
+cell := document.Cell{Runs: []document.CellRun{
+    {Text: "1:N/A\n"},
+    {Text: "2:N/A", TextColor: "B3261E"},
+}}
+```
+
+Empty or nil `Runs` keeps the existing `Cell.Text` path. Nonempty `Runs` requires
+empty `Text`; ambiguous input fails `Write` before output. An empty run color
+inherits `Cell.TextColor` or the paragraph style, and `Cell.Bold` applies to every
+run. Cell fill tones remain independent. Text is literal, including spaces,
+tabs, blank lines and Unicode; CRLF/CR become visual line breaks. `AddTable`
+deep-copies run slices. Colors never evaluate labels or availability.
+
+`Cell` now contains a slice and is not comparable. Use keyed cell literals and
+compare the fields/values relevant to the caller rather than using cells as map
+keys or comparing whole cells with `==`. Existing text serialization is retained.
+The existing document limits of 64 MiB aggregate text and 128 MiB expanded XML
+also cover run content. `go run ./examples/cell-runs <output.docx>` demonstrates
+the API; fonts, tab widths and pagination remain reader-dependent.
+
+[Cell-run qualification](docs/validation/cell-runs.md) records the tested native
+colors, exact legacy-output comparison and serialization boundary regressions.
+
 Use ParagraphWithNext for a brief literal introduction that should stay with the following table. It keeps body typography and adds reader pagination hints without creating a heading or outline entry. A reader may still split content taller than a page.
 
 
