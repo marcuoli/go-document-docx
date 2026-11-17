@@ -39,3 +39,15 @@ APIs retain their behavior. The report example exercises this path; tests cover 
 Applications select section boundaries; the library does not decide report
 organization or paginate content. Reader-specific rendering and release adoption
 remain separately qualified.
+
+## Literal table font override - issue #31
+
+The small document writer owns explicit per-table run sizes. Table.FontSize
+reuses the existing literal run path, adds bounded half-point validation before
+output, and emits both normal/complex-script sizes without another layout or XML
+editing engine. Zero leaves inherited defaults unchanged. Callers choose their
+table widths and font policy; colors, content and evidence meaning stay separate.
+Tests cover header/body/rich spans, adjacent tables, code defaults, empty tables,
+invalid values before output and template composition. The report example shows
+one compact table beside an inherited-size table. Reader rendering is qualified
+separately from package/XML tests.

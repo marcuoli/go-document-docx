@@ -1,10 +1,11 @@
 package document
 
 // CodeTable appends a full-width literal code block with a repeated bold header
-// and one body cell. Both use white Consolas text on black at Options.TableSize
-// half-points, left aligned with natural wrapping. Fonts are referenced, not
-// embedded; glyph coverage and pagination depend on the reader. The body row
-// may split across pages; no fixed height, truncation or execution is applied.
+// and one body cell. The header uses black text on white; the body uses white
+// text on black. Both use Consolas at Options.TableSize half-points, left aligned
+// with natural wrapping. Fonts are referenced, not embedded; glyph coverage
+// and pagination depend on the reader. The body row may split across pages;
+// no fixed height, truncation or execution is applied.
 //
 // Header and code are caller-owned literal strings; empty strings are allowed.
 // Spaces, tabs, blank lines and Unicode are retained; CRLF and CR become visual

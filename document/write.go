@@ -121,6 +121,9 @@ func (d *Document) validate(ctx context.Context) error {
 			continue
 		}
 		t := b.table
+		if t.FontSize != 0 && (t.FontSize < 12 || t.FontSize > 144) {
+			return fmt.Errorf("table font size must be zero or 12 to 144 half points")
+		}
 		if len(t.Headers) == 0 || len(t.Headers) > 32 || len(t.Widths) != len(t.Headers) {
 			return fmt.Errorf("table headers and widths must match")
 		}
@@ -163,6 +166,9 @@ func (d *Document) validate(ctx context.Context) error {
 				case "", "left", "center", "right", "justify":
 				default:
 					return fmt.Errorf("invalid cell paragraph alignment")
+				}
+				if err := check(c.ScreenTip); err != nil {
+					return err
 				}
 				if err := check(c.Text); err != nil {
 					return err
@@ -265,27 +271,35 @@ func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color 
 		b.WriteString(`<w:pageBreakBefore/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	if err := writeRun(ctx, b, text, color, bold); err != nil {
+	if err := writeRun(ctx, b, text, color, bold, false, 0); err != nil {
 		return err
 	}
 	b.WriteString(`</w:p>`)
 	return nil
 }
 
-func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold bool) error {
+func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold, italic bool, size int) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	b.WriteString(`<w:r>`)
-	if bold || color != "" {
+	if bold || italic || color != "" || size != 0 {
 		// Emphasis precedes color in the OOXML run-property sequence. Empty
 		// formatting keeps inherited styles and the established literal path.
 		b.WriteString(`<w:rPr>`)
 		if bold {
 			b.WriteString(`<w:b/>`)
 		}
+		if italic {
+			b.WriteString(`<w:i/>`)
+		}
 		if color != "" {
 			b.WriteString(`<w:color w:val="` + color + `"/>`)
+		}
+		if size != 0 {
+			// Explicit run sizes survive template style imports. Keep complex-script
+			// text at the same size without changing the document-wide styles.
+			fmt.Fprintf(b, "<w:sz w:val=\"%d\"/><w:szCs w:val=\"%d\"/>", size, size)
 		}
 		b.WriteString(`</w:rPr>`)
 	}
@@ -296,8 +310,8 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold 
 	return nil
 }
 
-func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string) error {
-	if len(cell.Runs) == 0 && cell.Alignment == "" {
+func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size, bookmarkID int) error {
+	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" {
 		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false)
 	}
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
@@ -311,6 +325,15 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		b.WriteString(`<w:jc w:val="` + alignment + `"/>`)
 	}
 	b.WriteString(`</w:pPr>`)
+	if cell.ScreenTip != "" {
+		// Each tooltip links back to its own generated bookmark. No relationship
+		// or Hyperlink run style is added, so literal run appearance is retained.
+		fmt.Fprintf(b, `<w:bookmarkStart w:id="%d" w:name="DocxCellTip%d"/><w:hyperlink w:anchor="DocxCellTip%d" w:tooltip="`, bookmarkID, bookmarkID, bookmarkID)
+		if err := writeScreenTipAttribute(ctx, b, cell.ScreenTip); err != nil {
+			return err
+		}
+		b.WriteString(`" w:history="0">`)
+	}
 	runs := cell.Runs
 	if len(runs) == 0 {
 		runs = []CellRun{{Text: cell.Text}}
@@ -332,9 +355,12 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		if run.Text != "" {
 			previousCR = strings.HasSuffix(run.Text, "\r")
 		}
-		if err := writeRun(ctx, b, text, runColor, cell.Bold); err != nil {
+		if err := writeRun(ctx, b, text, runColor, cell.Bold, run.Italic, size); err != nil {
 			return err
 		}
+	}
+	if cell.ScreenTip != "" {
+		fmt.Fprintf(b, `</w:hyperlink><w:bookmarkEnd w:id="%d"/>`, bookmarkID)
 	}
 	b.WriteString(`</w:p>`)
 	return nil
@@ -348,6 +374,7 @@ func paragraph(style, text string) string {
 
 func (d *Document) body(ctx context.Context) (string, error) {
 	var b strings.Builder
+	nextBookmarkID := 0
 	b.WriteString(`<w:document xmlns:w="` + wordNS + `" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`)
 	for i, item := range d.blocks {
 		if err := ctx.Err(); err != nil {
@@ -358,7 +385,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 			b.WriteString(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
 		case item.table != nil:
 			spaceAfter := i+1 >= len(d.blocks) || !d.blocks[i+1].pageBreakBefore
-			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter, item.codeTable); err != nil {
+			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter, item.codeTable, &nextBookmarkID); err != nil {
 				return "", err
 			}
 		default:
@@ -378,15 +405,15 @@ func (d *Document) body(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter, code bool) error {
+func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter, code bool, nextBookmarkID *int) error {
 	appearance := tableStyleFor(options)
 	if code {
 		// The code palette is local to this block; ordinary table defaults and
 		// caller appearance values must not be changed by a code table.
-		appearance.HeaderFill = "000000"
+		appearance.HeaderFill = "FFFFFF"
 		appearance.BodyFill = "000000"
 		appearance.AlternateFill = "000000"
-		appearance.HeaderTextColor = "FFFFFF"
+		appearance.HeaderTextColor = "000000"
 		appearance.VerticalAlignment = "top"
 	}
 	width := 0
@@ -453,7 +480,12 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			if header {
 				color = appearance.HeaderTextColor
 			}
-			if err := writeCellParagraph(ctx, b, style, c, color); err != nil {
+			bookmarkID := 0
+			if c.ScreenTip != "" {
+				*nextBookmarkID++
+				bookmarkID = *nextBookmarkID
+			}
+			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarkID); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

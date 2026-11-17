@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0
+
+- Require keyed external Table and CellRun literals when adopting the new optional fields; preserve existing keyed defaults.
+
+- Reverify Go 1.27.4 and all selected module/tool releases against current official sources; retain the current graph and separately requalify source compatibility (#36).
+
+- Add exact-style SetParagraphSpaceBefore formatting with explicit twip spacing, preserved package/content properties and conservative inherited line-unit conflict rejection (#34).
+
+- Add optional literal Cell.ScreenTip hover text through internal self-anchor hyperlinks, preserving run appearance and empty-option output without external relationships (#33).
+
+- Add optional literal CellRun.Italic emphasis while preserving inherited defaults, colors, line breaks and caller-owned formatting policy (#32).
+
+- Add an optional half-point FontSize override for individual literal tables, preserving inherited typography and existing output by default (#31).
+
+- Use black text on white for literal code-table headers, preserving white monospace code on black, exact content and ordinary data-table appearances (#30).
+
 ## 0.6.0
 
 - Add explicit literal Cell.Alignment paragraph overrides for text and rich runs, preserving inherited defaults and code-table formatting without interpreting values.

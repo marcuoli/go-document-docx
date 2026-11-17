@@ -1,12 +1,17 @@
 # Literal code table qualification
 
 The additive `document.Document.CodeTable(header, code string)` API uses a
-repeating bold header and one splittable body cell. Both use white Consolas
-text on black at the configured table size. This palette is explicit and
+repeating bold header and one splittable body cell. The header uses black Consolas
+text on white; the body uses white Consolas text on black at the configured
+table size. This palette is explicit and
 independent of ordinary table appearance. Existing data-table and paragraph
 styles remain unchanged, including when the same document contains both.
 
-## Validation and acceptance
+## Historical reader qualification
+
+The reader checks below qualified the previous all-dark header palette. They
+remain historical evidence for literal content and pagination. Current header
+contrast checks are recorded in [header contrast](code-table-header-contrast.md).
 
 Qualification on 2026-11-15 used Go 1.27.3, Windows amd64, CGO disabled,
 GOWORK off and readonly official modules. Full tests, vet, module verification,

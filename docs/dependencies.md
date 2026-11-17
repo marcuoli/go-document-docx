@@ -2,7 +2,7 @@
 
 ## Current build selection
 
-Refreshed on 2026-11-15 against the official Go feed/history and upstream stable
+Refreshed on 2026-11-17 against the official Go feed/history and upstream stable
 tags. The current module and build requirement is Go 1.27.4; validation scripts
 and CI use that version. The standalone vulnerability scanner is v1.9.0.
 
@@ -22,7 +22,7 @@ and do not modify any dependency implementation or manifest.
 
 Go 1.27.4 full tests, race tests, vet/stdversion, module verification, example
 builds and v1.9.0 source/binary scans passed on Windows amd64. The synthetic
-Windows integration-tag Word TOC test also passed. Current scans reported no
+Windows integration-tag Word TOC test also passed. The 2026-11-17 configured source/binary scans reported no
 vulnerabilities, including no remaining required-module GO-2026-6859 result.
 This describes the tested configuration, not universal security or reader
 qualification. Dated historical results below retain their original meaning.

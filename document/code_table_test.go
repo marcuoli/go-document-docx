@@ -86,7 +86,11 @@ func TestCodeTablePreservesLiteralTextAndPagination(t *testing.T) {
 		if cell.Paragraph.Properties.Style.Value != wantStyle {
 			t.Fatal("code cell selected an unrelated style", i, cell.Paragraph.Properties.Style.Value)
 		}
-		if cell.Properties.Fill.Value != "000000" || len(cell.Paragraph.Runs) != 1 || cell.Paragraph.Runs[0].Properties.Color.Value != "FFFFFF" {
+		wantFill, wantColor := "000000", "FFFFFF"
+		if i == 0 {
+			wantFill, wantColor = "FFFFFF", "000000"
+		}
+		if cell.Properties.Fill.Value != wantFill || len(cell.Paragraph.Runs) != 1 || cell.Paragraph.Runs[0].Properties.Color.Value != wantColor {
 			t.Fatal("code palette lost", i)
 		}
 		if i == 0 {
@@ -139,7 +143,11 @@ func TestCodeTablePreservesLiteralTextAndPagination(t *testing.T) {
 			continue
 		}
 		matched++
-		if style.Run.Font.ASCII != "Consolas" || style.Run.Font.HANSI != "Consolas" || style.Run.Size.Value != 16 || style.Run.Color.Value != "FFFFFF" || style.Paragraph.Alignment.Value != "left" || style.Paragraph.KeepLines != nil || style.Paragraph.Outline != nil {
+		wantColor := "FFFFFF"
+		if style.ID == "CodeHeader" {
+			wantColor = "000000"
+		}
+		if style.Run.Font.ASCII != "Consolas" || style.Run.Font.HANSI != "Consolas" || style.Run.Size.Value != 16 || style.Run.Color.Value != wantColor || style.Paragraph.Alignment.Value != "left" || style.Paragraph.KeepLines != nil || style.Paragraph.Outline != nil {
 			t.Fatal("code style lost its typography/pagination contract", style.ID)
 		}
 		if (style.Run.Bold != nil) != (style.ID == "CodeHeader") || (style.Paragraph.KeepNext != nil) != (style.ID == "CodeHeader") {

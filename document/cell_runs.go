@@ -11,4 +11,7 @@ type CellRun struct {
 	Text string
 	// TextColor overrides the cell/style with six RGB digits; empty inherits.
 	TextColor string
+	// Italic adds direct italic emphasis to this span. False emits no override,
+	// preserving inherited style emphasis and existing output.
+	Italic bool
 }

@@ -49,6 +49,12 @@ type Cell struct {
 	// alignment and existing output. Write rejects other values before output.
 	// Alignment never parses or reformats text; AddTable copies the value.
 	Alignment string
+	// ScreenTip is optional literal hover text for the whole cell paragraph.
+	// Nonempty uses an internal self-anchor hyperlink, with no external target
+	// or added link style. Empty preserves existing output. AddTable copies it;
+	// Write validates UTF-8/XML and counts it in the document text/XML limits.
+	// Display and interaction depend on the reader; no visible text is added.
+	ScreenTip string
 }
 
 // Table contains a repeating header and explicit column widths in twips.
@@ -56,9 +62,13 @@ type Cell struct {
 // Tables may span pages. Rows stay together when they fit on a page; a row taller
 // than a page can still split. The renderer never silently drops values.
 type Table struct {
-	Headers []string
-	Widths  []int
-	Rows    [][]Cell
+	// FontSize optionally overrides header and body runs in half-points (12..144).
+	// Zero inherits Options.TableSize through the paragraph styles. It changes
+	// only this table's typography; text, colors and alignment remain literal.
+	FontSize int
+	Headers  []string
+	Widths   []int
+	Rows     [][]Cell
 }
 
 type block struct {
