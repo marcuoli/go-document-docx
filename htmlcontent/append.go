@@ -28,8 +28,8 @@ func Append(ctx context.Context, doc *editing.Document, reader io.Reader, option
 	if err != nil {
 		return err
 	}
-	var block func(*html.Node, int, bool) error
-	block = func(n *html.Node, level int, numbered bool) error {
+	var block func(*html.Node, int, *editing.List) error
+	block = func(n *html.Node, level int, list *editing.List) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -60,16 +60,24 @@ func Append(ctx context.Context, doc *editing.Document, reader io.Reader, option
 			if n.Data == "ol" && attr(n, "start") != "" && attr(n, "start") != "1" {
 				return fmt.Errorf("HTML list start requires an explicit native numbering definition")
 			}
+			current := doc.NewList(n.Data == "ol")
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.ElementNode && c.Data == "li" {
-					if err := block(c, level, n.Data == "ol"); err != nil {
+					if err := block(c, level, current); err != nil {
 						return err
 					}
 				}
 			}
 			return nil
 		case "li":
-			p, err := doc.List("", numbered, level)
+			var p *editing.Paragraph
+			var err error
+			if list == nil {
+				// Preserve the existing fallback for a parser-admitted orphan li.
+				p, err = doc.List("", false, level)
+			} else {
+				p, err = list.Item("", level)
+			}
 			if err != nil {
 				return err
 			}
@@ -78,7 +86,7 @@ func Append(ctx context.Context, doc *editing.Document, reader io.Reader, option
 			}
 			for c := n.FirstChild; c != nil; c = c.NextSibling {
 				if c.Type == html.ElementNode && (c.Data == "ul" || c.Data == "ol") {
-					if err := block(c, level+1, false); err != nil {
+					if err := block(c, level+1, nil); err != nil {
 						return err
 					}
 				}
@@ -116,13 +124,13 @@ func Append(ctx context.Context, doc *editing.Document, reader io.Reader, option
 			return appendImage(ctx, p, n, options)
 		}
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			if err := block(c, level, numbered); err != nil {
+			if err := block(c, level, list); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-	return block(root, 0, false)
+	return block(root, 0, nil)
 }
 func inline(ctx context.Context, p *editing.Paragraph, n *html.Node, style editing.TextStyle, options Options) error {
 	for c := n.FirstChild; c != nil; c = c.NextSibling {

@@ -3,6 +3,7 @@ package template
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -48,5 +49,62 @@ func TestUnsupportedTemplateProgramsFail(t *testing.T) {
 		if _, err := Render(context.Background(), b.Bytes(), nil, Options{Document: report.Defaults()}); err == nil {
 			t.Fatal(text)
 		}
+	}
+}
+
+func TestRenderRejectsExpandedTextBeforeReplacement(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 33 {
+		if _, err := d.Paragraph("{{VALUE}}", editing.ParagraphOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var input bytes.Buffer
+	if err := d.Write(t.Context(), &input); err != nil {
+		t.Fatal(err)
+	}
+	original := bytes.Clone(input.Bytes())
+	out, err := Render(t.Context(), input.Bytes(), map[string]string{"VALUE": strings.Repeat("v", 2<<20)}, Options{Document: report.Defaults()})
+	if err == nil || !strings.Contains(err.Error(), "template output text exceeds 64 MiB") || out != nil {
+		t.Fatal("expanded text was not rejected by template preflight", err)
+	}
+	if !bytes.Equal(input.Bytes(), original) {
+		t.Fatal("rejected template changed input")
+	}
+}
+
+func TestExpandedTextBudgetCountsRepeatedSpellingsAndLiteralText(t *testing.T) {
+	const limit = 64 << 20
+	for _, tc := range []struct {
+		name           string
+		literal        int64
+		counts         map[string]int
+		syntax, values map[string]string
+		wantErr        bool
+	}{
+		{"exact boundary", 0, map[string]int{"{{K}}": 4096}, map[string]string{"{{K}}": "K"}, map[string]string{"K": strings.Repeat("v", 16384)}, false},
+		{"one byte per occurrence over", 0, map[string]int{"{{K}}": 4096}, map[string]string{"{{K}}": "K"}, map[string]string{"K": strings.Repeat("v", 16385)}, true},
+		{"literal text counts", limit, map[string]int{"{{K}}": 1}, map[string]string{"{{K}}": "K"}, map[string]string{"K": "x"}, true},
+		{"different spellings share value", limit - 3, map[string]int{"{{K}}": 1, "{{ K }}": 1}, map[string]string{"{{K}}": "K", "{{ K }}": "K"}, map[string]string{"K": "xx"}, true},
+		{"shrinking replacements", limit, map[string]int{"{{LONG}}": 1}, map[string]string{"{{LONG}}": "LONG"}, map[string]string{"LONG": ""}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			size := tc.literal
+			for original, count := range tc.counts {
+				size += int64(len(original) * count)
+			}
+			err := checkExpandedText(t.Context(), size, tc.counts, tc.syntax, tc.values)
+			if (err != nil) != tc.wantErr {
+				t.Fatal("expanded text budget", err)
+			}
+		})
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := checkExpandedText(ctx, 0, nil, nil, nil); !errors.Is(err, context.Canceled) {
+		t.Fatal("cancellation identity lost", err)
 	}
 }

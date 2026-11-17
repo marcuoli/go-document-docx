@@ -26,7 +26,7 @@ Editors and their Native handles share serial mutable ownership. A failed author
 
 The extended package envelope admits at most 64 MiB compressed, 256 MiB uncompressed, 128 MiB per part, and 4096 parts. XML admission permits depth 128, two million elements per part and 256 attributes per element. Output uses the same compressed bound. These are admission limits, not a fixed peak-memory guarantee or a full OOXML schema validator.
 
-New document text is limited to 64 MiB and represented cells to one million. Numeric spelling is limited to 4096 bytes and scientific-exponent magnitude 4096 before big-number expansion. HTML input is UTF-8 and limited to 8 MiB. Template substitution permits 4096 occurrences. Individual fonts/images are limited to 32 MiB; decoded image dimensions are bounded to 100 million pixels.
+New document text is limited to 64 MiB and represented cells to one million. Numeric spelling is limited to 4096 bytes and scientific-exponent magnitude 4096 before big-number expansion. HTML input is UTF-8 and limited to 8 MiB. Template substitution permits 4096 occurrences and preflights the aggregate expanded paragraph text before synchronous replacement. Individual fonts/images are limited to 32 MiB; decoded image dimensions are bounded to 100 million pixels.
 
 Cancellation is checked between phases, during traversal and at writer boundaries. Third-party CPU-only serialization/parsing is synchronous. Publication never closes a caller-owned writer. A successful install can precede a cleanup error, so callers must inspect Installed even when an error is returned.
 

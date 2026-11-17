@@ -8,6 +8,7 @@ import (
 
 	"archive/zip"
 	"github.com/marcuoli/go-document-docx/editing"
+	"github.com/marcuoli/go-document-docx/internal/opc"
 	"github.com/marcuoli/go-document-docx/report"
 	"github.com/marcuoli/go-document-docx/tabledata"
 	"io"
@@ -139,5 +140,58 @@ func TestCaptionCountersAndExplicitZero(t *testing.T) {
 	}
 	if _, err := d.Paragraph("bad\x01", editing.ParagraphOptions{}); err == nil {
 		t.Fatal("invalid character admitted")
+	}
+}
+
+func TestIndependentListsPreserveLegacySharedSequence(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.List("Shared first", true, 0); err != nil {
+		t.Fatal(err)
+	}
+	independent := d.NewList(true)
+	if _, err := independent.Item("Independent first", 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.List("Shared second", true, 0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := independent.Item("Independent second", 0); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := d.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	xml, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []string{}
+	for _, p := range opc.Elements(xml.Root(), opc.Word, "p") {
+		pr := opc.Child(p, opc.Word, "pPr")
+		if pr == nil {
+			continue
+		}
+		num := opc.Child(pr, opc.Word, "numPr")
+		if num != nil {
+			ids = append(ids, opc.Attr(opc.Child(num, opc.Word, "numId"), opc.Word, "val"))
+		}
+	}
+	if len(ids) != 4 || ids[0] != ids[2] || ids[1] != ids[3] || ids[0] == ids[1] {
+		t.Fatal("shared/independent sequence ownership changed", ids)
+	}
+	var uninitialized editing.List
+	if _, err := uninitialized.Item("Invalid", 0); err == nil {
+		t.Fatal("zero list accepted")
+	}
+	if _, err := independent.Item("Invalid", 9); err == nil {
+		t.Fatal("invalid list level accepted")
 	}
 }

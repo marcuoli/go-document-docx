@@ -96,11 +96,55 @@ func mergeDefaults(style, defaults *etree.Element) {
 			order = opc.RunOrder
 		}
 		for _, value := range values.ChildElements() {
-			if opc.Child(current, opc.Word, value.Tag) == nil {
+			if existing := opc.Child(current, opc.Word, value.Tag); existing != nil {
+				mergeDefaultAttributes(existing, value)
+			} else {
 				placeholder := opc.Ordered(current, value.Tag, order)
 				current.InsertChildAt(placeholder.Index(), inherited(value, defaults))
 				current.RemoveChild(placeholder)
 			}
+		}
+	}
+}
+
+// Compound leaf properties inherit individual attributes. An explicit after
+// value or ASCII family must not discard the other source defaults (#39).
+func mergeDefaultAttributes(current, defaults *etree.Element) {
+	if current.NamespaceURI() != opc.Word || defaults.NamespaceURI() != opc.Word {
+		return
+	}
+	switch current.Tag {
+	case "spacing", "ind", "rFonts", "lang":
+	default:
+		return
+	}
+	// Alternatives denote the same effective setting. Materializing an older
+	// hanging/character-unit/theme value beside an explicit newer alternative can
+	// make readers prefer the old value even though the source style overrode it.
+	groups := map[string]string{}
+	switch current.Tag {
+	case "rFonts":
+		groups = map[string]string{"asciiTheme": "ascii", "hAnsiTheme": "hAnsi", "eastAsiaTheme": "eastAsia", "cstheme": "cs"}
+	case "ind":
+		groups = map[string]string{"leftChars": "left", "start": "left", "startChars": "left", "rightChars": "right", "end": "right", "endChars": "right", "firstLine": "first", "firstLineChars": "first", "hanging": "first", "hangingChars": "first"}
+	case "spacing":
+		groups = map[string]string{"beforeLines": "before", "afterLines": "after"}
+	}
+	group := func(key string) string {
+		if name, ok := groups[key]; ok {
+			return name
+		}
+		return key
+	}
+	explicit := map[string]bool{}
+	for _, a := range current.Attr {
+		if a.NamespaceURI() == opc.Word {
+			explicit[group(a.Key)] = true
+		}
+	}
+	for _, a := range defaults.Attr {
+		if a.NamespaceURI() == opc.Word && !explicit[group(a.Key)] {
+			opc.SetAttr(current, opc.Word, a.Key, a.Value)
 		}
 	}
 }

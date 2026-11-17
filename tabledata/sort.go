@@ -31,10 +31,11 @@ type SortKey struct {
 // Sort returns a stable, owned ordering and preserves original cell text, including
 // large integers, numeric spellings, and dates. It never coerces missing data to zero.
 func (d Data) Sort(keys ...SortKey) (Data, error) {
-	out, err := d.Clone()
-	if err != nil {
+	if err := d.validate(); err != nil {
 		return Data{}, err
 	}
+	out := Data{Headers: slices.Clone(d.Headers), Rows: make([][]string, len(d.Rows))}
+	var err error
 	type value struct {
 		blank  bool
 		text   string

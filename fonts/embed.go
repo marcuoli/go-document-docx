@@ -112,7 +112,7 @@ func Embed(ctx context.Context, input []byte, faces []Face) ([]byte, error) {
 		seen[key] = true
 		var font *etree.Element
 		for _, e := range table.Root().ChildElements() {
-			if e.Tag == "font" && opc.Attr(e, opc.Word, "name") == face.Name {
+			if e.Tag == "font" && e.NamespaceURI() == opc.Word && opc.Attr(e, opc.Word, "name") == face.Name {
 				font = e
 				break
 			}
@@ -143,10 +143,10 @@ func Embed(ctx context.Context, input []byte, faces []Face) ([]byte, error) {
 		}
 		p.Parts[name] = encoded
 		rid := opc.AddRelation(rels, "font", opc.Relative(fontPart, name), "")
-		entry := font.CreateElement("w:" + slot)
-		entry.CreateAttr("r:id", rid)
+		entry := opc.Ensure(font, slot)
+		opc.SetAttr(entry, opc.Office, "id", rid)
 		text := strings.ToUpper(hex.EncodeToString(guid[:]))
-		entry.CreateAttr("w:fontKey", "{"+text[:8]+"-"+text[8:12]+"-"+text[12:16]+"-"+text[16:20]+"-"+text[20:]+"}")
+		opc.SetAttr(entry, opc.Word, "fontKey", "{"+text[:8]+"-"+text[8:12]+"-"+text[12:16]+"-"+text[16:20]+"-"+text[20:]+"}")
 		if err := p.ContentType(name, "application/vnd.openxmlformats-officedocument.obfuscatedFont"); err != nil {
 			return nil, err
 		}

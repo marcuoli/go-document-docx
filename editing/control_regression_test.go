@@ -222,3 +222,56 @@ func TestExplicitCellAlignmentAppliesToEveryParagraph(t *testing.T) {
 		}
 	}
 }
+
+func TestIndependentListKeepsNumberingCleanupIdentifierLast(t *testing.T) {
+	base, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := base.List("Existing", true, 0); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := base.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	number, err := pkg.XML("word/numbering.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	number.Root().CreateElement("w:numIdMacAtCleanup").CreateAttr("w:val", "2")
+	if err := pkg.SetXML("word/numbering.xml", number); err != nil {
+		t.Fatal(err)
+	}
+	b.Reset()
+	if err := pkg.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	d, err := editing.Open(t.Context(), b.Bytes(), report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.NewList(true).Item("Restart", 0); err != nil {
+		t.Fatal(err)
+	}
+	b.Reset()
+	if err := d.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	output, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := output.XML("word/numbering.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	children := result.Root().ChildElements()
+	if len(children) == 0 || children[len(children)-1].Tag != "numIdMacAtCleanup" {
+		t.Fatal("numbering cleanup identifier is no longer terminal")
+	}
+}

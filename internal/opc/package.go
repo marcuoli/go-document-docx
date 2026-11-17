@@ -242,8 +242,9 @@ func Attr(e *etree.Element, namespace, tag string) string {
 	return ""
 }
 
-// SetAttr updates an attribute by namespace and local name, retaining its prefix.
-// New attributes use the canonical Word prefix; callers must establish its binding.
+// SetAttr updates an attribute by expanded name, retaining its existing prefix.
+// New qualified attributes reuse a visible alias or bind an unused local prefix;
+// descendant shadowing must never rebind or overwrite retained foreign attributes.
 func SetAttr(e *etree.Element, namespace, key, value string) {
 	for i, a := range e.Attr {
 		if a.Key == key && a.NamespaceURI() == namespace {
@@ -251,15 +252,54 @@ func SetAttr(e *etree.Element, namespace, key, value string) {
 			return
 		}
 	}
-	e.CreateAttr("w:"+key, value)
+	if namespace == "" {
+		e.CreateAttr(key, value)
+		return
+	}
+	bindings := map[string]string{}
+	for node := e; node != nil; node = node.Parent() {
+		for _, a := range node.Attr {
+			if a.Space == "xmlns" {
+				if _, seen := bindings[a.Key]; !seen {
+					bindings[a.Key] = a.Value
+				}
+			}
+		}
+	}
+	prefix := e.Space
+	if prefix == "" || bindings[prefix] != namespace {
+		prefix = ""
+		for node := e; node != nil && prefix == ""; node = node.Parent() {
+			for _, a := range node.Attr {
+				if a.Space == "xmlns" && bindings[a.Key] == namespace {
+					prefix = a.Key
+					break
+				}
+			}
+		}
+	}
+	if prefix == "" {
+		base := "ns"
+		if namespace == Word {
+			base = "w"
+		} else if namespace == Office {
+			base = "r"
+		}
+		prefix = base
+		for i := 1; ; i++ {
+			if _, used := bindings[prefix]; !used {
+				break
+			}
+			prefix = fmt.Sprintf("%s%d", base, i)
+		}
+		e.CreateAttr("xmlns:"+prefix, namespace)
+	}
+	e.CreateAttr(prefix+":"+key, value)
 }
 
-// Ensure returns a direct Word child or appends one using the established w binding.
+// Ensure returns a direct Word child or appends one with its own Word binding.
 func Ensure(root *etree.Element, tag string) *etree.Element {
-	if e := Child(root, Word, tag); e != nil {
-		return e
-	}
-	return root.CreateElement("w:" + tag)
+	return Ordered(root, tag, nil)
 }
 
 // WordPrefix establishes the reserved Word and office relationship bindings on root.

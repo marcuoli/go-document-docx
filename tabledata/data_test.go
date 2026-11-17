@@ -105,3 +105,79 @@ func TestNumericExpansionIsBoundedBeforeAllocation(t *testing.T) {
 		}
 	}
 }
+
+func TestTransformResultsOwnHeadersRowsAndCells(t *testing.T) {
+	original := Data{Headers: []string{"Key", "Value"}, Rows: [][]string{{"b", "2"}, {"a", "1"}}}
+	for _, tc := range []struct {
+		name      string
+		transform func(Data) (Data, error)
+		want      Data
+	}{
+		{"select", func(d Data) (Data, error) { return d.Select([]int{1, 0}) }, Data{Headers: []string{"Value", "Key"}, Rows: [][]string{{"2", "b"}, {"1", "a"}}}},
+		{"transpose", func(d Data) (Data, error) { return d.Transpose() }, Data{Headers: []string{"Key", "b", "a"}, Rows: [][]string{{"Value", "2", "1"}}}},
+		{"sort", func(d Data) (Data, error) { return d.Sort(SortKey{Column: 0}) }, Data{Headers: []string{"Key", "Value"}, Rows: [][]string{{"a", "1"}, {"b", "2"}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input, err := original.Clone()
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := tc.transform(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(result, tc.want) {
+				t.Fatal("transformed values", result)
+			}
+			for i := range input.Headers {
+				input.Headers[i] = "input"
+			}
+			for _, row := range input.Rows {
+				for i := range row {
+					row[i] = "input"
+				}
+			}
+			if !reflect.DeepEqual(result, tc.want) {
+				t.Fatal("input aliases transformed values", result)
+			}
+			for i := range result.Headers {
+				result.Headers[i] = "result"
+			}
+			for _, row := range result.Rows {
+				for i := range row {
+					row[i] = "result"
+				}
+			}
+			if !reflect.DeepEqual(input, Data{Headers: []string{"input", "input"}, Rows: [][]string{{"input", "input"}, {"input", "input"}}}) {
+				t.Fatal("result aliases input", input)
+			}
+		})
+	}
+}
+func TestTransformsPreserveEmptyShapeAndRejectRaggedInput(t *testing.T) {
+	for _, rows := range [][][]string{nil, {}} {
+		d := Data{Headers: []string{"A"}, Rows: rows}
+		sorted, err := d.Sort()
+		if err != nil || sorted.Rows == nil || len(sorted.Rows) != 0 {
+			t.Fatal("sort empty shape", sorted, err)
+		}
+		selected, err := d.Select([]int{0})
+		if err != nil || selected.Rows == nil || len(selected.Rows) != 0 {
+			t.Fatal("select empty shape", selected, err)
+		}
+		transposed, err := d.Transpose()
+		if err != nil || transposed.Rows == nil || len(transposed.Rows) != 0 || !reflect.DeepEqual(transposed.Headers, []string{"A"}) {
+			t.Fatal("transpose empty shape", transposed, err)
+		}
+	}
+	bad := Data{Headers: []string{"A", "B"}, Rows: [][]string{{"one"}}}
+	if _, err := bad.Select([]int{0}); err == nil {
+		t.Fatal("select accepted ragged input")
+	}
+	if _, err := bad.Transpose(); err == nil {
+		t.Fatal("transpose accepted ragged input")
+	}
+	if _, err := bad.Sort(); err == nil {
+		t.Fatal("sort accepted ragged input")
+	}
+}

@@ -75,3 +75,31 @@ func TestFontRestrictionsAndMalformedTables(t *testing.T) {
 		t.Fatal("complete face incorrectly treated as subset", err)
 	}
 }
+
+func TestEmbedPreservesLocalNamespaceBindings(t *testing.T) {
+	p, err := opc.Read(t.Context(), baseDocument(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Parts["word/fontTable.xml"] = []byte(`<w:fonts xmlns:w="` + opc.Word + `" xmlns:r="` + opc.Office + `"><a:font xmlns:a="` + opc.Word + `" xmlns:w="urn:foreign" xmlns:r="urn:foreign-office" a:name="Synthetic" w:name="foreign" r:id="retained"/></w:fonts>`)
+	out, err := Embed(t.Context(), packageDocument(t, p), []Face{{Name: "Synthetic", Data: fixtureFont(0)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := opc.Read(t.Context(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := got.XML("word/fontTable.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	slots := opc.Elements(doc.Root(), opc.Word, "embedRegular")
+	if len(slots) != 1 || opc.Attr(slots[0], opc.Word, "fontKey") == "" || opc.Attr(slots[0], opc.Office, "id") == "" {
+		t.Fatal("embedded face has incorrect expanded namespaces")
+	}
+	font := opc.Elements(doc.Root(), opc.Word, "font")[0]
+	if opc.Attr(font, "urn:foreign", "name") != "foreign" || opc.Attr(font, "urn:foreign-office", "id") != "retained" {
+		t.Fatal("foreign attributes rebound")
+	}
+}

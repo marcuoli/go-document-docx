@@ -38,6 +38,7 @@ type Paragraph struct {
 	links                    []link
 	listKind                 string
 	listLevel                int
+	sequence                 *List
 	styles                   map[int]TextStyle
 	alignment, before, after bool
 }
@@ -156,6 +157,35 @@ func (d *Document) List(text string, numbered bool, level int) (*Paragraph, erro
 		p.listKind = "decimal"
 	}
 	p.listLevel = level
+	return p, nil
+}
+
+// List owns an independent numbering sequence in one Document. Use it serially;
+// it shares the editor lifetime and does not alter Document.List shared sequences.
+// Obtain one with Document.NewList; Item rejects an uninitialized list.
+type List struct {
+	document *Document
+	numbered bool
+}
+
+// NewList creates a list whose first item starts at one (or the first bullet).
+// Reuse the returned list for continuation, including after a nested list.
+// Each list owns its numbering instance; no content is added yet.
+func (d *Document) NewList(numbered bool) *List {
+	return &List{document: d, numbered: numbered}
+}
+
+// Item appends literal text at level 0..8 to this list. Levels control indentation
+// and multilevel numbering; a failed authoring call can partially change the editor.
+func (l *List) Item(text string, level int) (*Paragraph, error) {
+	if l == nil || l.document == nil {
+		return nil, fmt.Errorf("list must be created by Document.NewList")
+	}
+	p, err := l.document.List(text, l.numbered, level)
+	if err != nil {
+		return nil, err
+	}
+	p.sequence = l
 	return p, nil
 }
 

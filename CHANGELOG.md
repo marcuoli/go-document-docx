@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Record the pre-existing native Word qualification limit for minimal templates with official docxgo v2.16.0; retain the released dependency and track upstream resolution separately (#40).
+
+- Bound repeated template expansion before replacement; preserve local XML namespace bindings and inherited compound formatting; keep independent HTML lists separate without changing shared List sequences (#39).
+- Add owned NewList/Item sequences for explicit numbering restarts, strengthen OPC admission regressions, and remove redundant table-data copies while preserving ownership and ordering (#39).
+
 ## 0.7.1
 
 - Use the standard slices.Index helper for native paragraph/table lookup, preserving first-match and missing-node behavior without changing public APIs or dependencies (#35).

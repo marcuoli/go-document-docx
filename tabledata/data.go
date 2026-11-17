@@ -15,25 +15,36 @@ type Data struct {
 
 // Clone validates shape and returns a deep copy without modifying the source.
 func (d Data) Clone() (Data, error) {
-	if len(d.Headers) == 0 || len(d.Headers) > 32 {
-		return Data{}, fmt.Errorf("table must have 1 to 32 columns")
-	}
-	if len(d.Rows) > 1_000_000/len(d.Headers)-1 {
-		return Data{}, fmt.Errorf("table exceeds one million cells")
+	if err := d.validate(); err != nil {
+		return Data{}, err
 	}
 	out := Data{Headers: slices.Clone(d.Headers), Rows: make([][]string, len(d.Rows))}
 	for i, row := range d.Rows {
-		if len(row) != len(d.Headers) {
-			return Data{}, fmt.Errorf("row %d has %d cells; want %d", i, len(row), len(d.Headers))
-		}
 		out.Rows[i] = slices.Clone(row)
 	}
 	return out, nil
 }
 
+// Shape validation is shared by transforms that construct their own owned rows;
+// validating must not require a full deep copy that is immediately discarded.
+func (d Data) validate() error {
+	if len(d.Headers) == 0 || len(d.Headers) > 32 {
+		return fmt.Errorf("table must have 1 to 32 columns")
+	}
+	if len(d.Rows) > 1_000_000/len(d.Headers)-1 {
+		return fmt.Errorf("table exceeds one million cells")
+	}
+	for i, row := range d.Rows {
+		if len(row) != len(d.Headers) {
+			return fmt.Errorf("row %d has %d cells; want %d", i, len(row), len(d.Headers))
+		}
+	}
+	return nil
+}
+
 // Select returns columns in the requested order. Duplicate or missing columns fail.
 func (d Data) Select(columns []int) (Data, error) {
-	if _, err := d.Clone(); err != nil {
+	if err := d.validate(); err != nil {
 		return Data{}, err
 	}
 	if len(columns) == 0 {
@@ -76,21 +87,21 @@ func (d Data) Column(name string) (int, error) {
 // Transpose treats the existing header as the first row and promotes the first
 // resulting row to headers. The result must still fit the 32-column contract.
 func (d Data) Transpose() (Data, error) {
-	owned, err := d.Clone()
-	if err != nil {
+	if err := d.validate(); err != nil {
 		return Data{}, err
 	}
-	if len(owned.Rows)+1 > 32 {
+	if len(d.Rows)+1 > 32 {
 		return Data{}, fmt.Errorf("transposed table exceeds 32 columns")
 	}
-	matrix := append([][]string{owned.Headers}, owned.Rows...)
-	rows := make([][]string, len(owned.Headers))
-	for col := range rows {
-		for _, row := range matrix {
-			rows[col] = append(rows[col], row[col])
+	rows := make([][]string, len(d.Headers))
+	for col, header := range d.Headers {
+		rows[col] = make([]string, len(d.Rows)+1)
+		rows[col][0] = header
+		for i, row := range d.Rows {
+			rows[col][i+1] = row[col]
 		}
 	}
-	return (Data{Headers: rows[0], Rows: rows[1:]}).Clone()
+	return Data{Headers: rows[0], Rows: rows[1:]}, nil
 }
 
 // Limit returns at most count body rows. Zero means no rows, not an implicit default.

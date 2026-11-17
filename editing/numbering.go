@@ -82,11 +82,34 @@ func (d *Document) numbering(p *opc.Package, rels *etree.Document, nodes map[*Pa
 		}
 		maxNum = max(maxNum, i)
 	}
-	ids := map[string]int{}
+	type sequence struct {
+		kind string
+		list *List
+	}
+	ids := map[sequence]int{}
+	abstract := map[string]int{}
+	addInstance := func(abstractID, restartLevel int) int {
+		maxNum++
+		num := etree.NewElement("w:num")
+		num.CreateAttr("w:numId", strconv.Itoa(maxNum))
+		num.CreateElement("w:abstractNumId").CreateAttr("w:val", strconv.Itoa(abstractID))
+		// Distinct numIds alone may continue the same abstract list in Word.
+		// An explicit start override preserves the owned sequence boundary.
+		if restartLevel >= 0 {
+			override := num.CreateElement("w:lvlOverride")
+			override.CreateAttr("w:ilvl", strconv.Itoa(restartLevel))
+			override.CreateElement("w:startOverride").CreateAttr("w:val", "1")
+		}
+		if tail := opc.Child(doc.Root(), opc.Word, "numIdMacAtCleanup"); tail != nil {
+			doc.Root().InsertChildAt(tail.Index(), num)
+		} else {
+			doc.Root().AddChild(num)
+		}
+		return maxNum
+	}
 	for _, kind := range []string{"bullet", "decimal"} {
 		maxAbstract++
-		maxNum++
-		ids[kind] = maxNum
+		abstract[kind] = maxAbstract
 		abs := etree.NewElement("w:abstractNum")
 		abs.CreateAttr("w:abstractNumId", strconv.Itoa(maxAbstract))
 		abs.CreateElement("w:multiLevelType").CreateAttr("w:val", "multilevel")
@@ -107,7 +130,7 @@ func (d *Document) numbering(p *opc.Package, rels *etree.Document, nodes map[*Pa
 		}
 		inserted := false
 		for _, child := range doc.Root().ChildElements() {
-			if child.Tag == "num" {
+			if child.NamespaceURI() == opc.Word && (child.Tag == "num" || child.Tag == "numIdMacAtCleanup") {
 				doc.Root().InsertChildAt(child.Index(), abs)
 				inserted = true
 				break
@@ -116,12 +139,22 @@ func (d *Document) numbering(p *opc.Package, rels *etree.Document, nodes map[*Pa
 		if !inserted {
 			doc.Root().AddChild(abs)
 		}
-		num := doc.Root().CreateElement("w:num")
-		num.CreateAttr("w:numId", strconv.Itoa(maxNum))
-		num.CreateElement("w:abstractNumId").CreateAttr("w:val", strconv.Itoa(maxAbstract))
+		ids[sequence{kind: kind}] = addInstance(maxAbstract, -1)
+	}
+	// Independent lists share format definitions, not counters. Returning to a
+	// parent sequence after nested items must continue that parent, not restart it.
+	for _, paragraph := range d.paragraphs {
+		if paragraph.sequence == nil {
+			continue
+		}
+		key := sequence{paragraph.listKind, paragraph.sequence}
+		if _, exists := ids[key]; exists {
+			continue
+		}
+		ids[key] = addInstance(abstract[key.kind], paragraph.listLevel)
 	}
 	for _, paragraph := range d.paragraphs {
-		if id, ok := ids[paragraph.listKind]; ok {
+		if id, ok := ids[sequence{paragraph.listKind, paragraph.sequence}]; ok {
 			pr := properties(nodes[paragraph], "pPr")
 			num := ordered(pr, "numPr", paragraphOrder)
 			num.CreateElement("w:ilvl").CreateAttr("w:val", strconv.Itoa(paragraph.listLevel))

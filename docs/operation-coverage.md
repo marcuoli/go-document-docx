@@ -15,7 +15,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 | Literal cell paragraph alignment | document.Cell.Alignment | Empty inherits; explicit left/center/right/justify applies to Text or Runs without parsing values, changing sibling/header styles or affecting CodeTable policy. Invalid values fail before output. |
 | Selected paragraph space before | formatting.SetParagraphSpaceBefore | Exact-style main-document twip overrides with automatic-before disabled; rejects direct/definition line-unit conflicts, preserving other properties and package parts. |
 | Literal cell hover text | document.Cell.ScreenTip | Optional internal self-anchor tooltip around unchanged styled runs; no external relationship. Empty preserves output; reader hover and final composed-layout qualification remain caller-owned. |
-| Lists and numbered styles | editing.List | Native numbering, separate bullet/decimal instances, levels 0–8. |
+| Lists and numbered styles | editing.List; editing.NewList/Item | Shared legacy sequences or explicit independent lists, separate bullet/decimal formats, levels 0–8. HTML list boundaries retain separate numbering instances. |
 | Captions and object inventories | editing.Caption; caller-owned inventory | Counters start at one; table/figure labels come from the caller. |
 | Bookmarks and internal/external links | Paragraph.Bookmark/Link; Table.Link | Unique names and valid targets; external web/mail relationships are never fetched. |
 | Horizontal rule and box | Paragraph.Rule | Explicit borders and neutral fill. |
@@ -44,7 +44,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 
 ## Explicit input limitations
 
-Template rendering supports literal text keys and whole-paragraph image keys. It rejects executable Jinja controls/filters, unsupported field/revision/attribute locations, missing keys and layouts skipped by the official replacement API. A PAGE field immediately adjacent to a placeholder can be such a rejected layout; generation preserves the original input and returns an error. It does not silently remove the field.
+Template rendering supports literal text keys and whole-paragraph image keys. Its 64 MiB output-text budget counts every repeated value before synchronous replacement. It rejects executable Jinja controls/filters, unsupported field/revision/attribute locations, missing keys and layouts skipped by the official replacement API. A PAGE field immediately adjacent to a placeholder can be such a rejected layout; generation preserves the original input and returns an error. It does not silently remove the field.
 
 HTML import supports block prose, inline emphasis/code/links, lists, caller-resolved images and rectangular tables. Nested tables, row/column spans, CSS layout and custom list starts are not a general HTML renderer. Headerless rows require a caller-supplied schema. Unsupported nonempty color metadata fails instead of being silently discarded.
 
@@ -57,3 +57,9 @@ Font collections, subsets and bitmap-only/restricted embedding are unsupported. 
 RenderText substitutes inline literal keys directly in the original Word text nodes. It retains drawings, fields, section properties, source formatting and untouched package parts. Split runs are supported; replacement text uses the first character formatting. It does not replace images or execute Jinja. Keys inside fields/revisions/attributes, keys crossing non-text boundaries, and line-break/tab values fail explicitly.
 
 RenderTextWithOptions can allow an exact, caller-identified simple-field result cache via TextOptions.SimpleFieldResults. The existing instruction remains unchanged and is not executed. Word may overwrite the cached result on refresh; the caller must make its displayed value agree with the referenced content. Complex fields and revisions remain rejected.
+
+Native Word qualification for independent lists uses a complete caller-supplied
+Word template and verifies restart strings without repair. Extended editing from
+minimal templates has a separate official-backend manifest limitation (#40);
+see dependencies.md. Generic ZIP/XML checks or successful LibreOffice rendering
+do not establish that path is accepted by native Word.

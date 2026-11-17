@@ -166,3 +166,34 @@ func TestAlignParagraphsUpdatesNamespaceAliasedAttributes(t *testing.T) {
 		t.Fatal("duplicate expanded attribute", count)
 	}
 }
+
+func TestAlignmentPreservesShadowedWordPrefix(t *testing.T) {
+	for _, tc := range []struct{ name, body string }{
+		{"alias", `<a:p xmlns:a="` + opc.Word + `" xmlns:w="urn:foreign"><a:pPr><a:pStyle a:val="Normal"/><a:jc w:val="foreign"/></a:pPr><a:r><a:t>Literal</a:t></a:r></a:p>`},
+		{"default", `<p xmlns="` + opc.Word + `" xmlns:w="urn:foreign"><pPr><pStyle xmlns:a="` + opc.Word + `" a:val="Normal"/><jc w:val="foreign"/></pPr><r><t>Literal</t></r></p>`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := packageBytes(t, textPackage(t, tc.body))
+			out, err := AlignParagraphs(t.Context(), input, "right", "Normal")
+			if err != nil {
+				t.Fatal(err)
+			}
+			pkg, err := opc.Read(t.Context(), out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			doc, err := pkg.XML("word/document.xml")
+			if err != nil {
+				t.Fatal(err)
+			}
+			nodes := opc.Elements(doc.Root(), opc.Word, "jc")
+			if len(nodes) != 1 || opc.Attr(nodes[0], opc.Word, "val") != "right" || opc.Attr(nodes[0], "urn:foreign", "val") != "foreign" {
+				t.Fatal("Word alignment or retained foreign attribute changed")
+			}
+			again, err := AlignParagraphs(t.Context(), out, "right", "Normal")
+			if err != nil || !bytes.Equal(again, out) {
+				t.Fatal("repeat was not a no-op", err)
+			}
+		})
+	}
+}

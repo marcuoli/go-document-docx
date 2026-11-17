@@ -52,3 +52,19 @@ All dependencies are consumed as official releases with signed module sums. No l
 Qualification on 2026-11-11 retains the required Go 1.27.3 toolchain. govulncheck reports GO-2026-6859 (net/http MaxBytesReader header race), fixed in Go 1.27.4, at required-module level; no affected imported package or called symbol was reported for this module or either example binary. This is a bounded scanner result, not proof of exploitability or universal absence of vulnerabilities. No compiler migration is included in the Word compatibility patch. Recheck this advisory at the next configured build review.
 
 The optional Windows-only Word package uses the official go-ole v1.3.0 release without CGO. Upstream source and license: https://github.com/go-ole/go-ole/tree/v1.3.0 . The default portable renderer does not invoke Word. This dependency is not a replacement document engine.
+
+## Minimal-template native Word qualification
+
+Official docxgo v2.16.0 can add theme, web-settings and document-property parts
+while retaining a minimal input package's content-type manifest. Native Word
+rejects that output when the added parts lack their specific declarations;
+LibreOffice and generic ZIP/XML checks can still accept it. This was reproduced
+on v0.7.1 and the audit-remediation candidate (#40).
+
+Retain the official release and upstream-only policy. A diagnostic package
+with declarations added is evidence only, not a production dependency workaround.
+The 2026-11-17 official tag check found no newer v2.16/v2.17 stable release.
+Recheck official releases or supported public configuration before the next
+module publication, then qualify editing.New and minimal Open/Render directly
+in Word without repair. Complete caller-supplied Word templates are qualified
+separately; that result does not resolve the minimal-template path.

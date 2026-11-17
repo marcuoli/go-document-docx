@@ -1,7 +1,9 @@
 package htmlcontent
 
 import (
+	"bytes"
 	"context"
+	"github.com/marcuoli/go-document-docx/internal/opc"
 	"strings"
 	"testing"
 
@@ -64,5 +66,72 @@ func TestNamedSelectionKeepsColorsAndRejectsInvalidMetadata(t *testing.T) {
 	}
 	if _, err := ReadTable(context.Background(), strings.NewReader(strings.ReplaceAll(markup, "#FFF0D5", "not-a-color")), Selector{}, TableOptions{}); err == nil {
 		t.Fatal("invalid metadata silently ignored")
+	}
+}
+
+func TestIndependentHTMLListsRestartAndResumeOuterSequence(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	markup := `<ol><li>Outer first<ol><li>Nested first</li></ol><ol><li>Nested restart</li></ol></li><li>Outer second</li></ol><p>Between</p><ol start="1"><li>Restart</li></ol>`
+	if err := Append(t.Context(), d, strings.NewReader(markup), Options{}); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := d.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := map[string]string{}
+	levels := map[string]string{}
+	for _, p := range opc.Elements(doc.Root(), opc.Word, "p") {
+		pr := opc.Child(p, opc.Word, "pPr")
+		if pr == nil {
+			continue
+		}
+		num := opc.Child(pr, opc.Word, "numPr")
+		if num == nil {
+			continue
+		}
+		var text strings.Builder
+		for _, n := range opc.Elements(p, opc.Word, "t") {
+			text.WriteString(n.Text())
+		}
+		ids[text.String()] = opc.Attr(opc.Child(num, opc.Word, "numId"), opc.Word, "val")
+		levels[text.String()] = opc.Attr(opc.Child(num, opc.Word, "ilvl"), opc.Word, "val")
+	}
+	outer := ids["Outer first"]
+	if len(ids) != 5 || outer == "" || ids["Outer second"] != outer || ids["Restart"] == outer || ids["Nested first"] == ids["Nested restart"] || ids["Nested first"] == outer || ids["Nested restart"] == ids["Restart"] {
+		t.Fatal("list boundaries/outer continuation lost", ids)
+	}
+	if levels["Nested first"] != "1" || levels["Nested restart"] != "1" || levels["Restart"] != "0" {
+		t.Fatal("list nesting lost", levels)
+	}
+	numbering, err := pkg.XML("word/numbering.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for text, level := range map[string]string{"Outer first": "0", "Nested first": "1", "Nested restart": "1", "Restart": "0"} {
+		found := false
+		for _, num := range opc.Elements(numbering.Root(), opc.Word, "num") {
+			if opc.Attr(num, opc.Word, "numId") != ids[text] {
+				continue
+			}
+			override := opc.Child(num, opc.Word, "lvlOverride")
+			if override != nil && opc.Attr(override, opc.Word, "ilvl") == level && opc.Attr(opc.Child(override, opc.Word, "startOverride"), opc.Word, "val") == "1" {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("independent list lacks explicit restart", text)
+		}
 	}
 }

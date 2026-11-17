@@ -252,3 +252,102 @@ func TestRepeatedComposeWithCustomStylesPart(t *testing.T) {
 		t.Fatal("distinct closing styles missing")
 	}
 }
+
+func TestComposeRetainsPartialDefaultAttributes(t *testing.T) {
+	main, closing := blankPackage(t, "Main"), blankPackage(t, "Closing")
+	styles, err := closing.XML("word/styles.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaults := opc.Child(styles.Root(), opc.Word, "docDefaults")
+	ppr := opc.Child(opc.Child(defaults, opc.Word, "pPrDefault"), opc.Word, "pPr")
+	opc.Ensure(ppr, "spacing").CreateAttr("w:before", "240")
+	rpr := opc.Child(opc.Child(defaults, opc.Word, "rPrDefault"), opc.Word, "rPr")
+	fonts := opc.Ensure(rpr, "rFonts")
+	fonts.CreateAttr("w:ascii", "DefaultLatin")
+	fonts.CreateAttr("w:hAnsi", "DefaultWestern")
+	fonts.CreateAttr("w:eastAsia", "DefaultAsian")
+	for _, style := range opc.Elements(styles.Root(), opc.Word, "style") {
+		if opc.Attr(style, opc.Word, "styleId") == "Normal" {
+			opc.Properties(style, "pPr").CreateElement("w:spacing").CreateAttr("w:after", "80")
+			opc.Ordered(style, "rPr", opc.StyleOrder).CreateElement("w:rFonts").CreateAttr("w:ascii", "OverrideLatin")
+		}
+	}
+	if err := closing.SetXML("word/styles.xml", styles); err != nil {
+		t.Fatal(err)
+	}
+	out, err := Compose(t.Context(), packageBytes(t, main), packageBytes(t, closing))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := opc.Read(t.Context(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := got.XML("word/styles.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, style := range opc.Elements(result.Root(), opc.Word, "style") {
+		if opc.Attr(style, opc.Word, "styleId") != "Closing1_Normal" {
+			continue
+		}
+		spacing := opc.Child(opc.Child(style, opc.Word, "pPr"), opc.Word, "spacing")
+		if opc.Attr(spacing, opc.Word, "before") != "240" || opc.Attr(spacing, opc.Word, "after") != "80" {
+			t.Fatal("partial spacing defaults lost")
+		}
+		family := opc.Child(opc.Child(style, opc.Word, "rPr"), opc.Word, "rFonts")
+		for key, want := range map[string]string{"ascii": "OverrideLatin", "hAnsi": "DefaultWestern", "eastAsia": "DefaultAsian"} {
+			if opc.Attr(family, opc.Word, key) != want {
+				t.Fatal("partial font defaults lost", key)
+			}
+		}
+		return
+	}
+	t.Fatal("imported default style missing")
+}
+
+func TestDefaultFontSlotsKeepExplicitLiteralAndThemeChoices(t *testing.T) {
+	for _, tc := range []struct{ name, explicitKey, explicitValue, defaultKey, defaultValue string }{
+		{"literal replaces theme", "ascii", "ExplicitLatin", "asciiTheme", "minorHAnsi"},
+		{"theme replaces literal", "asciiTheme", "majorHAnsi", "ascii", "DefaultLatin"},
+		{"complex script theme", "cstheme", "majorBidi", "cs", "DefaultComplex"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			current := etree.NewElement("w:rFonts")
+			current.CreateAttr("xmlns:w", opc.Word)
+			current.CreateAttr("w:"+tc.explicitKey, tc.explicitValue)
+			defaults := etree.NewElement("w:rFonts")
+			defaults.CreateAttr("xmlns:w", opc.Word)
+			defaults.CreateAttr("w:"+tc.defaultKey, tc.defaultValue)
+			defaults.CreateAttr("w:eastAsia", "InheritedAsian")
+			mergeDefaultAttributes(current, defaults)
+			if opc.Attr(current, opc.Word, tc.explicitKey) != tc.explicitValue || opc.Attr(current, opc.Word, tc.defaultKey) != "" || opc.Attr(current, opc.Word, "eastAsia") != "InheritedAsian" {
+				t.Fatal("font slot inheritance changed")
+			}
+		})
+	}
+}
+
+func TestExplicitIndentationOverridesInheritedAlternatives(t *testing.T) {
+	for _, tc := range []struct{ name, currentKey, currentValue, defaultKey, defaultValue string }{
+		{"first line replaces hanging", "firstLine", "180", "hanging", "360"},
+		{"hanging replaces first line", "hanging", "360", "firstLine", "180"},
+		{"twips replace character units", "left", "720", "leftChars", "200"},
+		{"character units replace twips", "rightChars", "200", "right", "720"},
+		{"logical start replaces physical left", "start", "720", "left", "360"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			current := etree.NewElement("w:ind")
+			current.CreateAttr("xmlns:w", opc.Word)
+			current.CreateAttr("w:"+tc.currentKey, tc.currentValue)
+			defaults := etree.NewElement("w:ind")
+			defaults.CreateAttr("xmlns:w", opc.Word)
+			defaults.CreateAttr("w:"+tc.defaultKey, tc.defaultValue)
+			mergeDefaultAttributes(current, defaults)
+			if opc.Attr(current, opc.Word, tc.currentKey) != tc.currentValue || opc.Attr(current, opc.Word, tc.defaultKey) != "" {
+				t.Fatal("inherited alternative overrides explicit indentation")
+			}
+		})
+	}
+}

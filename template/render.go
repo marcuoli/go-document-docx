@@ -39,6 +39,7 @@ type Options struct {
 // whitespace around keys. Values stay literal and are substituted once. Dotted
 // keys address literal map keys, not object properties. Unsupported Jinja controls,
 // field-adjacent/unrepresented text locations and missing keys fail before output.
+// Repeated values count toward the 64 MiB text budget before replacement begins.
 func Render(ctx context.Context, input []byte, values map[string]string, options Options) ([]byte, error) {
 	editor, err := editing.Open(ctx, input, options.Document)
 	if err != nil {
@@ -51,6 +52,7 @@ func Render(ctx context.Context, input []byte, values map[string]string, options
 	syntax := map[string]string{}
 	counts := map[string]int{}
 	occurrences := 0
+	var textBytes int64
 	for name := range pkg.Parts {
 		if !strings.HasPrefix(name, "word/") || !strings.HasSuffix(name, ".xml") {
 			continue
@@ -78,6 +80,7 @@ func Render(ctx context.Context, input []byte, values map[string]string, options
 		}
 		for _, paragraph := range opc.Elements(xml.Root(), opc.Word, "p") {
 			text := paragraphText(paragraph)
+			textBytes += int64(len(text))
 			matches, err := placeholders(text)
 			if err != nil {
 				return nil, err
@@ -147,6 +150,9 @@ func Render(ctx context.Context, input []byte, values map[string]string, options
 		originals = append(originals, original)
 	}
 	slices.Sort(originals)
+	if err := checkExpandedText(ctx, textBytes, counts, syntax, data); err != nil {
+		return nil, err
+	}
 	// Literal ReplaceText preserves fields that the upstream MergeTemplate API
 	// may clear. Its skipped-layout receipt is enforced rather than losing fields.
 	// Opaque intermediate tokens prevent a value containing another placeholder

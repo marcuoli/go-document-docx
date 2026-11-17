@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/beevik/etree"
-
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
@@ -113,7 +111,8 @@ func SetParagraphSpaceBefore(ctx context.Context, input []byte, twips int, style
 			}
 		}
 		spacing := opc.Ordered(pr, "spacing", opc.ParagraphOrder)
-		setBeforeSpacingAttributes(spacing, value)
+		opc.SetAttr(spacing, opc.Word, "before", value)
+		opc.SetAttr(spacing, opc.Word, "beforeAutospacing", "0")
 		changed = true
 	}
 	if !changed {
@@ -127,48 +126,4 @@ func SetParagraphSpaceBefore(ctx context.Context, input []byte, twips int, style
 		return nil, err
 	}
 	return out.Bytes(), nil
-}
-
-// Existing Word aliases are safe for new attributes even when a nested element
-// shadows w. A default-namespace element needs an unused explicit prefix because
-// unprefixed attributes do not inherit the default namespace. Never rebind an
-// existing prefix: that could change the meaning of retained foreign attributes.
-func setBeforeSpacingAttributes(spacing *etree.Element, value string) {
-	prefix := spacing.Space
-	if prefix == "" {
-		bindings := map[string]string{}
-		for node := spacing; node != nil; node = node.Parent() {
-			for _, attr := range node.Attr {
-				if attr.Space == "xmlns" {
-					if _, seen := bindings[attr.Key]; !seen {
-						bindings[attr.Key] = attr.Value
-					}
-				}
-			}
-		}
-		prefix = "w"
-		if bindings[prefix] != opc.Word {
-			prefix = "spacingWord"
-			for suffix := 1; ; suffix++ {
-				if _, used := bindings[prefix]; !used {
-					break
-				}
-				prefix = "spacingWord" + strconv.Itoa(suffix)
-			}
-			spacing.CreateAttr("xmlns:"+prefix, opc.Word)
-		}
-	}
-	for _, attr := range []struct{ key, value string }{{"before", value}, {"beforeAutospacing", "0"}} {
-		found := false
-		for i, current := range spacing.Attr {
-			if current.Key == attr.key && current.NamespaceURI() == opc.Word {
-				spacing.Attr[i].Value = attr.value
-				found = true
-				break
-			}
-		}
-		if !found {
-			spacing.CreateAttr(prefix+":"+attr.key, attr.value)
-		}
-	}
 }
