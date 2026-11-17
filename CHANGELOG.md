@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+
+- Use the standard slices.Index helper for native paragraph/table lookup, preserving first-match and missing-node behavior without changing public APIs or dependencies (#35).
+
 ## 0.7.0
 
 - Require keyed external Table and CellRun literals when adopting the new optional fields; preserve existing keyed defaults.

@@ -3,6 +3,7 @@ package editing
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -74,13 +75,7 @@ func (d *Document) amend(ctx context.Context, p *opc.Package) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		index := -1
-		for i, n := range natives {
-			if n == paragraph.native {
-				index = i
-				break
-			}
-		}
+		index := slices.Index(natives, paragraph.native)
 		if index < 0 {
 			return fmt.Errorf("paragraph helper no longer belongs to document")
 		}
@@ -165,13 +160,7 @@ func (d *Document) amend(ctx context.Context, p *opc.Package) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		index := -1
-		for i, n := range nativeTables {
-			if n == table.native {
-				index = i
-				break
-			}
-		}
+		index := slices.Index(nativeTables, table.native)
 		if index < 0 {
 			return fmt.Errorf("table helper no longer belongs to document")
 		}
