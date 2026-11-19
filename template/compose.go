@@ -132,6 +132,7 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 		}
 	}
 	bookmarkIDs, bookmarkNames := map[string]string{}, map[string]string{}
+	fallbackID := maxID + 1
 	for _, e := range opc.Elements(other, opc.Word, "bookmarkStart") {
 		oldID, oldName := opc.Attr(e, opc.Word, "id"), opc.Attr(e, opc.Word, "name")
 		if oldID == "" || oldName == "" || bookmarkIDs[oldID] != "" {
@@ -144,12 +145,15 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 			name = prefix + oldName
 		}
 		// Caller names may already occupy both the prefixed spelling and
-		// generated fallbacks. Search unused bounded names without changing targets.
-		for suffix := maxID; len(name) > 40 || names[name]; suffix++ {
+		// generated fallbacks. Advance one shared counter so occupied intervals
+		// are examined only once across all imports, without changing targets.
+		fallbackID = max(fallbackID, maxID)
+		for len(name) > 40 || names[name] {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			name = fmt.Sprintf("%sbookmark_%d", prefix, suffix)
+			name = fmt.Sprintf("%sbookmark_%d", prefix, fallbackID)
+			fallbackID++
 		}
 		names[name] = true
 		bookmarkNames[oldName] = name

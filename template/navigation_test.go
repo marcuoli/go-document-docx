@@ -2,6 +2,8 @@ package template
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -91,4 +93,48 @@ func TestLiteralNavigationCompositionKeepsPreciseCollidingDestinations(t *testin
 	if len(seen) != len(expected) || len(names) != 7 {
 		t.Fatal("missing links/destinations", seen, names)
 	}
+}
+
+// Count cancellation checkpoints as a deterministic work bound, rather than
+// asserting wall-clock timing on a busy host.
+type composeProbeContext struct {
+	context.Context
+	calls int
+}
+
+func (c *composeProbeContext) Err() error { c.calls++; return c.Context.Err() }
+func TestBookmarkFallbackSearchAdvancesAcrossImports(t *testing.T) {
+	const count = 160
+	page := func(imported bool) []byte {
+		d, err := word.New(report.Defaults())
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < count; i++ {
+			name := fmt.Sprintf("long_%035d", i)
+			d.BookmarkNext(name)
+			d.Paragraph("long")
+		}
+		if !imported {
+			for i := 3*count + 1; i <= 5*count; i++ {
+				d.BookmarkNext(fmt.Sprintf("Closing1_bookmark_%d", i))
+				d.Paragraph("reserved")
+			}
+		}
+		var b bytes.Buffer
+		if err := d.Write(t.Context(), &b); err != nil {
+			t.Fatal(err)
+		}
+		return b.Bytes()
+	}
+	ctx := &composeProbeContext{Context: t.Context()}
+	if _, err := Compose(ctx, page(false), page(true)); err != nil {
+		t.Fatal(err)
+	}
+	// Admission, XML serialization and all name probes fit comfortably below
+	// this linear budget; rescanning the occupied range needs >38,000 probes.
+	if ctx.calls > count*100 {
+		t.Fatalf("fallback search repeated occupied candidates: %d checkpoints", ctx.calls)
+	}
+	t.Logf("%d bookmarks: %d cancellation checkpoints", count, ctx.calls)
 }
