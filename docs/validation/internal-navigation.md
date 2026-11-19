@@ -33,8 +33,14 @@ Go 1.27.4 regression tests cover forward and backward cell/paragraph destination
 rich text, queued anchors across tables/breaks, duplicate/invalid/missing targets,
 one wrapper, generated-name collisions, ownership, cancellation and repeated
 serialization. Composition tests include colliding IDs/names and 40-character
-names whose imported names require bounded remapping; links retain their exact
+names whose imported names require bounded remapping, even when caller names
+already occupy prefixed/generated candidates; links retain their exact
 intended destination rather than jumping to the original document's bookmark.
+
+The two-page synthetic example was rendered with LibreOffice 26.8.2 and visually
+inspected: both navigation labels are underlined, and the destination text,
+rich-run colors, line break and table boundaries remain legible without clipping.
+This is a separate reader check from native Word navigation.
 
 On 19 November 2026, the opt-in Windows integration test using desktop Word 16.0
 published a composed synthetic document through word.WithUpdatedFields, opened

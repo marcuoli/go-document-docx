@@ -143,11 +143,13 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 		if names[name] {
 			name = prefix + oldName
 		}
-		if len(name) > 40 {
-			name = fmt.Sprintf("%sbookmark_%d", prefix, maxID)
-		}
-		if names[name] {
-			return nil, fmt.Errorf("closing bookmark collision")
+		// Caller names may already occupy both the prefixed spelling and
+		// generated fallbacks. Search unused bounded names without changing targets.
+		for suffix := maxID; len(name) > 40 || names[name]; suffix++ {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			name = fmt.Sprintf("%sbookmark_%d", prefix, suffix)
 		}
 		names[name] = true
 		bookmarkNames[oldName] = name

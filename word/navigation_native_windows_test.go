@@ -29,6 +29,10 @@ func TestNativeWordFollowsComposedLiteralNavigation(t *testing.T) {
 			t.Fatal(err)
 		}
 		d.AddTable(document.Table{Headers: []string{"Section"}, Widths: []int{5000}, Rows: [][]document.Cell{{{Text: "Jump " + label, LinkTarget: "scope", ScreenTip: "Navigate " + label}}}})
+		if label == "Main" {
+			d.BookmarkNext("Closing1_scope")
+			d.Paragraph("Reserved candidate")
+		}
 		d.BookmarkNext("scope")
 		d.Paragraph(label + " destination")
 		var b bytes.Buffer

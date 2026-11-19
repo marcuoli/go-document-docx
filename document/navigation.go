@@ -32,6 +32,9 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error)
 	}
 	names := map[string]bool{}
 	add := func(name string) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if err := navigation.ValidateBookmarkName(name); err != nil {
 			return err
 		}
@@ -90,26 +93,38 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error)
 	return names, nil
 }
 
-type namedBookmark struct {
-	name string
-	id   int
-}
 type bookmarkState struct {
 	id       int
 	reserved map[string]bool
 }
 
-func (s *bookmarkState) next(selfLink bool) int {
+func (s *bookmarkState) next(ctx context.Context, selfLink bool) (int, error) {
 	for {
+		if err := ctx.Err(); err != nil {
+			return 0, err
+		}
 		s.id++
 		if !selfLink || !s.reserved[fmt.Sprintf("DocxCellTip%d", s.id)] {
-			return s.id
+			return s.id, nil
 		}
 	}
 }
-func writeBookmarkStart(b *strings.Builder, name string, id int) {
-	fmt.Fprintf(b, `<w:bookmarkStart w:id="%d" w:name="%s"/>`, id, name)
+func writeBookmarkStart(ctx context.Context, b *strings.Builder, name string, id int) error {
+	return writeBookmarkMarkup(ctx, b, fmt.Sprintf(`<w:bookmarkStart w:id="%d" w:name="%s"/>`, id, name))
 }
-func writeBookmarkEnd(b *strings.Builder, id int) {
-	fmt.Fprintf(b, `<w:bookmarkEnd w:id="%d"/>`, id)
+func writeBookmarkEnd(ctx context.Context, b *strings.Builder, id int) error {
+	return writeBookmarkMarkup(ctx, b, fmt.Sprintf(`<w:bookmarkEnd w:id="%d"/>`, id))
+}
+
+// Validated names are at most 40 ASCII bytes, so this small temporary markup is
+// bounded. Check before every marker: one paragraph may carry many bookmarks.
+func writeBookmarkMarkup(ctx context.Context, b *strings.Builder, markup string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if len(markup) > (128<<20)-b.Len() {
+		return fmt.Errorf("document XML exceeds 128 MiB")
+	}
+	b.WriteString(markup)
+	return nil
 }

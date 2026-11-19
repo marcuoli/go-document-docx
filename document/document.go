@@ -59,8 +59,9 @@ type Cell struct {
 	// Alignment never parses or reformats text; AddTable copies the value.
 	Alignment string
 	// ScreenTip is optional literal hover text for the whole cell paragraph.
-	// Nonempty uses an internal self-anchor hyperlink, with no external target
-	// or added link style. Empty preserves existing output. AddTable copies it;
+	// With LinkTarget it annotates that styled navigation link; otherwise it
+	// uses an internal self-anchor hyperlink without added link styling.
+	// Empty preserves existing output. AddTable copies it;
 	// Write validates UTF-8/XML and counts it in the document text/XML limits.
 	// Display and interaction depend on the reader; no visible text is added.
 	ScreenTip string

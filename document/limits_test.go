@@ -54,3 +54,68 @@ func TestGeneratedPropertyOrdering(t *testing.T) {
 		t.Fatal("table properties violate schema order")
 	}
 }
+
+// One paragraph can own many destinations; XML expansion and cancellation must
+// be checked while emitting them rather than after the entire paragraph.
+func TestQueuedBookmarksBoundExpansionAndCancellation(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(strings.Repeat(" ", (128<<20)-120))
+	err := writeParagraph(t.Context(), &b, "Normal", "", "", false, false, 1, "first", "second", "third")
+	if err == nil || b.Len() > 128<<20 {
+		t.Fatalf("bookmark expansion escaped budget: err=%v bytes=%d", err, b.Len())
+	}
+
+	// Fill the remaining budget exactly with an end marker, then require both
+	// kinds of marker to reject before modifying a full builder.
+	end := `<w:bookmarkEnd w:id="1"/>`
+	b.WriteString(strings.Repeat(" ", (128<<20)-b.Len()-len(end)))
+	if err := writeBookmarkEnd(t.Context(), &b, 1); err != nil || b.Len() != 128<<20 {
+		t.Fatal("exact end boundary", err, b.Len())
+	}
+	if err := writeBookmarkEnd(t.Context(), &b, 2); err == nil || b.Len() != 128<<20 {
+		t.Fatal("end overflow", err, b.Len())
+	}
+	if err := writeBookmarkStart(t.Context(), &b, "last", 2); err == nil || b.Len() != 128<<20 {
+		t.Fatal("start overflow", err, b.Len())
+	}
+	ctx := &bookmarkCancelContext{Context: t.Context(), remaining: 1}
+	b.Reset()
+	err = writeParagraph(ctx, &b, "Normal", "", "", false, false, 1, "first", "second", "third")
+	if !errors.Is(err, context.Canceled) || strings.Contains(b.String(), `w:name="third"`) {
+		t.Fatalf("bookmark loop ignored cancellation: %v %s", err, b.String())
+	}
+}
+
+type bookmarkCancelContext struct {
+	context.Context
+	remaining int
+}
+
+func (c *bookmarkCancelContext) Err() error {
+	if c.remaining == 0 {
+		return context.Canceled
+	}
+	c.remaining--
+	return nil
+}
+func TestQueuedBookmarkValidationCancellation(t *testing.T) {
+	for _, validate := range []struct {
+		name string
+		run  func(context.Context, *Document) error
+	}{
+		{"text", func(ctx context.Context, d *Document) error { return d.validate(ctx) }},
+		{"names", func(ctx context.Context, d *Document) error { _, err := d.navigationNames(ctx); return err }},
+	} {
+		t.Run(validate.name, func(t *testing.T) {
+			d, _ := New(Options{PageWidth: 11906, PageHeight: 16838, Margin: 1080, Font: "Arial", HeadingFont: "Arial", SubheadingFont: "Arial", BodySize: 19, HeadingSize: 22, SubheadingSize: 20, TableSize: 16})
+			d.BookmarkNext("first")
+			d.BookmarkNext("second")
+			d.BookmarkNext("third")
+			d.Paragraph("")
+			ctx := &bookmarkCancelContext{Context: t.Context(), remaining: 2}
+			if err := validate.run(ctx, d); !errors.Is(err, context.Canceled) {
+				t.Fatal("validation did not stop within one paragraph", err)
+			}
+		})
+	}
+}

@@ -20,6 +20,12 @@ func literalNavigationPage(t *testing.T, label string) []byte {
 		{{Text: label + " heading link", LinkTarget: "scope", ScreenTip: "Navigate " + label}},
 		{{Text: label + " long link", LinkTarget: strings.Repeat("a", 40)}},
 	}})
+	if label == "First" {
+		for _, name := range []string{"Closing1_scope", "Closing1_bookmark_6", "Closing1_bookmark_7"} {
+			d.BookmarkNext(name)
+			d.Paragraph("Reserved " + name)
+		}
+	}
 	d.BookmarkNext("scope")
 	d.Heading(label+" heading", 1)
 	d.AddTable(word.Table{Headers: []string{"Detail"}, Widths: []int{5000}, Rows: [][]word.Cell{{{Text: label + " exact cell", Bookmark: strings.Repeat("a", 40)}}}})
@@ -82,7 +88,7 @@ func TestLiteralNavigationCompositionKeepsPreciseCollidingDestinations(t *testin
 		}
 		seen[label.String()] = true
 	}
-	if len(seen) != len(expected) || len(names) != 4 {
+	if len(seen) != len(expected) || len(names) != 7 {
 		t.Fatal("missing links/destinations", seen, names)
 	}
 }

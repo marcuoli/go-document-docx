@@ -8,7 +8,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 | Core properties and contextual values | editing.SetMetadata; Native.Metadata; report.ScopedTitle; template values | Caller-authored identity, labels and dates. Naming/version/language policy remains outside. |
 | Paragraph text, repetition and blank lines | editing.Paragraph/Normal/Paragraph.Append; ordinary Go loops | Literal UTF-8; CRLF normalizes to one soft break; no implicit translation. |
 | Font/effects/alignment/spacing/indent | ParagraphOptions, TextStyle, Paragraph.Native | Distances in twips, sizes in half-points; nil effects inherit, explicit false/zero override. |
-| Headings and progress | editing.Heading; HeadingProgress | Levels 1â€“9, explicit page breaks, black default headings and per-editor notifications. |
+| Headings and progress | editing.Heading; HeadingProgress | Levels 1–9, explicit page breaks, black default headings and per-editor notifications. |
 | Styled body topics and code | ParagraphOptions; editing.Code | Separate body formatting from navigable headings. Code remains literal. |
 | Literal code tables | document.Document.CodeTable | Repeated bold black-on-white header and white-on-black Consolas body; splittable body, natural wrapping, no truncation/I/O. Existing 64 MiB aggregate-text/128 MiB expanded-XML bounds apply; fonts and pagination are reader-dependent. |
 | Mixed-color literal cells | document.Cell.Runs; document.CellRun | Ordered spans with inherited/overridden RGB colors and cell-wide bold; preserves literal line breaks and caller-owned labels. Empty Runs retains Cell.Text; nonempty Runs requires empty Text. Cell is slice-bearing and not comparable. |
@@ -16,7 +16,7 @@ The operation inventory accounts for the active reference helpers and legacy wra
 | Selected paragraph space before | formatting.SetParagraphSpaceBefore | Exact-style main-document twip overrides with automatic-before disabled; rejects direct/definition line-unit conflicts, preserving other properties and package parts. |
 | Literal cell hover text | document.Cell.ScreenTip | Optional internal self-anchor tooltip around unchanged styled runs; no external relationship. Empty preserves output; reader hover and final composed-layout qualification remain caller-owned. |
 | Literal internal navigation | document.Cell.Bookmark/LinkTarget; Document.BookmarkNext | Named cell/paragraph destinations with forward references and preflight validation; styled links share one tooltip wrapper; composition remaps imported anchors. See docs/validation/internal-navigation.md for native qualification. |
-| Lists and numbered styles | editing.List; editing.NewList/Item | Shared legacy sequences or explicit independent lists, separate bullet/decimal formats, levels 0â€“8. HTML list boundaries retain separate numbering instances. |
+| Lists and numbered styles | editing.List; editing.NewList/Item | Shared legacy sequences or explicit independent lists, separate bullet/decimal formats, levels 0–8. HTML list boundaries retain separate numbering instances. |
 | Captions and object inventories | editing.Caption; caller-owned inventory | Counters start at one; table/figure labels come from the caller. |
 | Bookmarks and internal/external links | Paragraph.Bookmark/Link; Table.Link | Unique names and valid targets; external web/mail relationships are never fetched. |
 | Horizontal rule and box | Paragraph.Rule | Explicit borders and neutral fill. |

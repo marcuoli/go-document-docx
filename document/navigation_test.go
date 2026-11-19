@@ -170,17 +170,17 @@ func TestBookmarkNextAddsNoParagraphAndSkipsTablesAndBreaks(t *testing.T) {
 
 func TestLiteralNavigationGeneratedNamesCannotCollide(t *testing.T) {
 	d := fixture(t)
-	d.BookmarkNext("DocxCellTip1")
+	d.BookmarkNext("DocxCellTip2")
 	d.Paragraph("Reserved caller name")
 	d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{
-		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "DocxCellTip1", ScreenTip: "tip"}},
+		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "DocxCellTip2", ScreenTip: "tip"}},
 	}})
 	var b bytes.Buffer
 	if err := d.Write(t.Context(), &b); err != nil {
 		t.Fatal(err)
 	}
 	got := inspectNavigation(t, b.Bytes())
-	if got.Text["DocxCellTip1"] != "Reserved caller name" || len(got.Names) != 4 || len(got.Links) != 3 || got.Links[2].Target != "DocxCellTip1" {
+	if got.Text["DocxCellTip2"] != "Reserved caller name" || len(got.Names) != 4 || len(got.Links) != 3 || got.Links[2].Target != "DocxCellTip2" {
 		t.Fatal(got)
 	}
 }

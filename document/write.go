@@ -115,6 +115,9 @@ func (d *Document) validate(ctx context.Context) error {
 			continue
 		}
 		for _, name := range b.bookmarks {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
 			if err := check(name); err != nil {
 				return err
 			}
@@ -280,20 +283,24 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool, bookmarks ...namedBookmark) error {
+func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool, firstBookmarkID int, bookmarks ...string) error {
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
 	if pageBreakBefore {
 		b.WriteString(`<w:pageBreakBefore/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	for _, mark := range bookmarks {
-		writeBookmarkStart(b, mark.name, mark.id)
+	for i, name := range bookmarks {
+		if err := writeBookmarkStart(ctx, b, name, firstBookmarkID+i); err != nil {
+			return err
+		}
 	}
 	if err := writeRun(ctx, b, text, color, bold, false, 0, false); err != nil {
 		return err
 	}
 	for i := len(bookmarks) - 1; i >= 0; i-- {
-		writeBookmarkEnd(b, bookmarks[i].id)
+		if err := writeBookmarkEnd(ctx, b, firstBookmarkID+i); err != nil {
+			return err
+		}
 	}
 	b.WriteString(`</w:p>`)
 	return nil
@@ -336,7 +343,7 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold,
 
 func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size, bookmarkID int) error {
 	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" && cell.Bookmark == "" && cell.LinkTarget == "" {
-		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false)
+		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false, 0)
 	}
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
 	if cell.Alignment != "" {
@@ -354,7 +361,9 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		bookmark = fmt.Sprintf("DocxCellTip%d", bookmarkID)
 	}
 	if bookmark != "" {
-		writeBookmarkStart(b, bookmark, bookmarkID)
+		if err := writeBookmarkStart(ctx, b, bookmark, bookmarkID); err != nil {
+			return err
+		}
 	}
 	target := cell.LinkTarget
 	if target == "" && cell.ScreenTip != "" {
@@ -404,7 +413,9 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		b.WriteString(`</w:hyperlink>`)
 	}
 	if bookmark != "" {
-		writeBookmarkEnd(b, bookmarkID)
+		if err := writeBookmarkEnd(ctx, b, bookmarkID); err != nil {
+			return err
+		}
 	}
 	b.WriteString(`</w:p>`)
 	return nil
@@ -412,7 +423,7 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 
 func paragraph(style, text string) string {
 	var b strings.Builder
-	_ = writeParagraph(context.Background(), &b, style, text, "", false, false)
+	_ = writeParagraph(context.Background(), &b, style, text, "", false, false, 0)
 	return b.String()
 }
 
@@ -433,11 +444,11 @@ func (d *Document) body(ctx context.Context, names map[string]bool) (string, err
 				return "", err
 			}
 		default:
-			marks := make([]namedBookmark, 0, len(item.bookmarks))
-			for _, name := range item.bookmarks {
-				marks = append(marks, namedBookmark{name, bookmarks.next(false)})
-			}
-			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore, marks...); err != nil {
+			// Paragraph names already belong to the document. Reserve consecutive
+			// IDs without allocating another record slice for a large bookmark queue.
+			firstID := bookmarks.id + 1
+			bookmarks.id += len(item.bookmarks)
+			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore, firstID, item.bookmarks...); err != nil {
 				return "", err
 			}
 		}
@@ -530,7 +541,11 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			}
 			bookmarkID := 0
 			if c.Bookmark != "" || c.ScreenTip != "" && c.LinkTarget == "" {
-				bookmarkID = bookmarks.next(c.Bookmark == "")
+				var err error
+				bookmarkID, err = bookmarks.next(ctx, c.Bookmark == "")
+				if err != nil {
+					return err
+				}
 			}
 			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarkID); err != nil {
 				return err
