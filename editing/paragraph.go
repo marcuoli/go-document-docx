@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"github.com/mmonterroca/docxgo/v2/domain"
 )
 
@@ -210,13 +211,8 @@ func (d *Document) Caption(label, text string) (*Paragraph, error) {
 // Bookmark marks the paragraph with a unique Word-compatible name. Duplicate
 // names, including names from a loaded template, are rejected at Write.
 func (p *Paragraph) Bookmark(name string) error {
-	if len(name) == 0 || len(name) > 40 {
-		return fmt.Errorf("bookmark length must be 1 to 40")
-	}
-	for i, r := range name {
-		if !(r == '_' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || i > 0 && r >= '0' && r <= '9') {
-			return fmt.Errorf("invalid bookmark name")
-		}
+	if err := navigation.ValidateBookmarkName(name); err != nil {
+		return err
 	}
 	p.bookmark = name
 	return nil
@@ -242,10 +238,10 @@ func (p *Paragraph) Link(text, target, tooltip string, internal bool) error {
 	if err != nil {
 		return err
 	}
-	if err := errors.Join(r.SetText(text), styleRun(r, TextStyle{Color: "315357", Underline: new(true)})); err != nil {
+	if err := errors.Join(r.SetText(text), styleRun(r, TextStyle{Color: navigation.LinkColor, Underline: new(true)})); err != nil {
 		return err
 	}
-	p.styles[index] = TextStyle{Color: "315357", Underline: new(true)}
+	p.styles[index] = TextStyle{Color: navigation.LinkColor, Underline: new(true)}
 	p.links = append(p.links, link{run: index, target: target, text: text, tooltip: tooltip, internal: internal})
 	return nil
 }

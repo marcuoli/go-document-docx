@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
@@ -39,7 +40,7 @@ func (t *Table) Link(row, column int, text, target, tooltip string, internal boo
 	if err := run.SetText(text); err != nil {
 		return err
 	}
-	style := TextStyle{Color: "315357", Underline: new(true)}
+	style := TextStyle{Color: navigation.LinkColor, Underline: new(true)}
 	if err := styleRun(run, style); err != nil {
 		return err
 	}

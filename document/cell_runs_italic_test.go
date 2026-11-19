@@ -10,7 +10,7 @@ func TestCellRunItalicPreservesSpanFormatting(t *testing.T) {
 	runs := []CellRun{
 		{Text: "before\r"},
 		{Italic: true, TextColor: "1565C0"},
-		{Text: "\nação\t<&>", TextColor: "B3261E", Italic: true},
+		{Text: "\naÃƒÂ§ÃƒÂ£o\t<&>", TextColor: "B3261E", Italic: true},
 		{Text: " after"},
 	}
 	d := &Document{}
@@ -64,7 +64,7 @@ func TestCellRunItalicPreservesSpanFormatting(t *testing.T) {
 			t.Fatalf("run%d formatting changed: %+v", i, run.Properties)
 		}
 	}
-	if strings.Join(paragraph.Runs[0].Text, "") != "before" || len(paragraph.Runs[0].Breaks) != 1 || len(paragraph.Runs[2].Breaks) != 0 || len(paragraph.Runs[2].Tabs) != 1 || strings.Join(paragraph.Runs[2].Text, "") != "ação<&>" || strings.Join(paragraph.Runs[3].Text, "") != " after" {
+	if strings.Join(paragraph.Runs[0].Text, "") != "before" || len(paragraph.Runs[0].Breaks) != 1 || len(paragraph.Runs[2].Breaks) != 0 || len(paragraph.Runs[2].Tabs) != 1 || strings.Join(paragraph.Runs[2].Text, "") != "aÃƒÂ§ÃƒÂ£o<&>" || strings.Join(paragraph.Runs[3].Text, "") != " after" {
 		t.Fatal("literal text, cross-span CRLF, tab or Unicode changed", out.String())
 	}
 	if !strings.Contains(out.String(), `<w:b/><w:i/><w:color w:val="B3261E"/><w:sz w:val="14"/><w:szCs w:val="14"/>`) {
@@ -87,7 +87,7 @@ func TestRunItalicNativeAndInheritedSerialization(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			var out strings.Builder
-			if err := writeRun(t.Context(), &out, "Literal", tc.color, tc.bold, tc.italic, tc.size); err != nil {
+			if err := writeRun(t.Context(), &out, "Literal", tc.color, tc.bold, tc.italic, tc.size, false); err != nil {
 				t.Fatal(err)
 			}
 			if out.String() != tc.want {

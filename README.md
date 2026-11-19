@@ -187,6 +187,40 @@ Spaces, indentation, tabs, blank lines and valid Unicode remain literal. CRLF/CR
 
 Run `go run ./examples/code-table <output.docx>` for a synthetic multipage example. [Code-table qualification](docs/validation/code-tables.md) records rendered samples separately from structural tests; no universal reader or arbitrary-size source guarantee is implied.
 
+## Literal internal navigation
+
+Use `Document.BookmarkNext(name)` before a paragraph or heading, or set
+`Cell.Bookmark` on an exact table-cell paragraph. A `Cell.LinkTarget` names that
+destination, including a later destination in the same document.
+
+```go
+d.AddTable(document.Table{
+    Headers: []string{"Section"},
+    Widths: []int{5000},
+    Rows: [][]document.Cell{{{
+        Text: "Details", LinkTarget: "detail", ScreenTip: "Jump to the detail",
+    }}},
+})
+d.BookmarkNext("detail")
+d.Heading("Details", 1)
+```
+
+Names use 1–40 ASCII letters, digits or underscores and start with a letter or
+underscore. Targets use exact spelling. `Write` rejects invalid/duplicate names,
+unresolved targets and a queued request with no following paragraph before
+emitting output. Tables/code tables and page breaks do not consume a queued
+request; multiple queued names can share one paragraph.
+
+Navigation uses the editor's default link color and underline, retaining explicit
+cell/run colors, emphasis, size and literal content. `ScreenTip` annotates that
+same hyperlink. Tooltip-only cells keep their existing self-links and appearance.
+Empty options preserve existing output. Use keyed external `Cell` literals when
+adopting these additional fields.
+
+Run `go run ./examples/internal-navigation <output.docx>` for a synthetic example.
+[Navigation qualification](docs/validation/internal-navigation.md) records
+composition collisions, native Word field refresh/Follow and reader limits.
+
 ## Optional desktop Word TOC refresh
 
 Import word and wrap an existing publication.Source with word.WithUpdatedFields(source, word.Options{}), then pass it to publication.Save. The decorator populates existing tables of contents and caption indexes, repaginates, refreshes TOC page numbers and saves before the destination is installed. It does not create a TOC or update arbitrary fields. Word may rewrite package XML, pagination and cached fields; this mode does not promise byte-identical template parts.

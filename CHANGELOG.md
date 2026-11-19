@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.9.0
+
+- Add literal Cell.Bookmark/Cell.LinkTarget destinations and styled internal links, plus layout-free Document.BookmarkNext anchors; preflight names/targets, preserve tooltip-only output and reuse editor validation/styles (#42).
+- Use keyed external Cell literals for the additive navigation fields. Verify forward references, template collisions and native Word field-refresh/navigation without changing dependencies (#42).
+
+## 0.8.0
+
 - Record the pre-existing native Word qualification limit for minimal templates with official docxgo v2.16.0; retain the released dependency and track upstream resolution separately (#40).
 
 - Bound repeated template expansion before replacement; preserve local XML namespace bindings and inherited compound formatting; keep independent HTML lists separate without changing shared List sequences (#39).

@@ -8,6 +8,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"io"
 	"strings"
 	"unicode/utf8"
@@ -30,7 +31,11 @@ func (d *Document) Write(ctx context.Context, writer io.Writer) error {
 	if err := d.validate(ctx); err != nil {
 		return err
 	}
-	body, err := d.body(ctx)
+	names, err := d.navigationNames(ctx)
+	if err != nil {
+		return err
+	}
+	body, err := d.body(ctx, names)
 	if err != nil {
 		return err
 	}
@@ -109,6 +114,11 @@ func (d *Document) validate(ctx context.Context) error {
 		if b.pageBreak {
 			continue
 		}
+		for _, name := range b.bookmarks {
+			if err := check(name); err != nil {
+				return err
+			}
+		}
 		if b.table == nil {
 			switch b.style {
 			case "Normal", "Lead", "Title", "Subtitle", "Heading1", "Heading2", "Heading3":
@@ -166,6 +176,11 @@ func (d *Document) validate(ctx context.Context) error {
 				case "", "left", "center", "right", "justify":
 				default:
 					return fmt.Errorf("invalid cell paragraph alignment")
+				}
+				for _, name := range []string{c.Bookmark, c.LinkTarget} {
+					if err := check(name); err != nil {
+						return err
+					}
 				}
 				if err := check(c.ScreenTip); err != nil {
 					return err
@@ -265,25 +280,31 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool) error {
+func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool, bookmarks ...namedBookmark) error {
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
 	if pageBreakBefore {
 		b.WriteString(`<w:pageBreakBefore/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	if err := writeRun(ctx, b, text, color, bold, false, 0); err != nil {
+	for _, mark := range bookmarks {
+		writeBookmarkStart(b, mark.name, mark.id)
+	}
+	if err := writeRun(ctx, b, text, color, bold, false, 0, false); err != nil {
 		return err
+	}
+	for i := len(bookmarks) - 1; i >= 0; i-- {
+		writeBookmarkEnd(b, bookmarks[i].id)
 	}
 	b.WriteString(`</w:p>`)
 	return nil
 }
 
-func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold, italic bool, size int) error {
+func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold, italic bool, size int, underline bool) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	b.WriteString(`<w:r>`)
-	if bold || italic || color != "" || size != 0 {
+	if bold || italic || color != "" || size != 0 || underline {
 		// Emphasis precedes color in the OOXML run-property sequence. Empty
 		// formatting keeps inherited styles and the established literal path.
 		b.WriteString(`<w:rPr>`)
@@ -301,6 +322,9 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold,
 			// text at the same size without changing the document-wide styles.
 			fmt.Fprintf(b, "<w:sz w:val=\"%d\"/><w:szCs w:val=\"%d\"/>", size, size)
 		}
+		if underline {
+			b.WriteString(`<w:u w:val="single"/>`)
+		}
 		b.WriteString(`</w:rPr>`)
 	}
 	if err := writeText(ctx, b, text); err != nil {
@@ -311,7 +335,7 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold,
 }
 
 func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size, bookmarkID int) error {
-	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" {
+	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" && cell.Bookmark == "" && cell.LinkTarget == "" {
 		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false)
 	}
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
@@ -325,15 +349,29 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		b.WriteString(`<w:jc w:val="` + alignment + `"/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	if cell.ScreenTip != "" {
-		// Each tooltip links back to its own generated bookmark. No relationship
-		// or Hyperlink run style is added, so literal run appearance is retained.
-		fmt.Fprintf(b, `<w:bookmarkStart w:id="%d" w:name="DocxCellTip%d"/><w:hyperlink w:anchor="DocxCellTip%d" w:tooltip="`, bookmarkID, bookmarkID, bookmarkID)
-		if err := writeScreenTipAttribute(ctx, b, cell.ScreenTip); err != nil {
-			return err
-		}
-		b.WriteString(`" w:history="0">`)
+	bookmark := cell.Bookmark
+	if bookmark == "" && cell.ScreenTip != "" && cell.LinkTarget == "" {
+		bookmark = fmt.Sprintf("DocxCellTip%d", bookmarkID)
 	}
+	if bookmark != "" {
+		writeBookmarkStart(b, bookmark, bookmarkID)
+	}
+	target := cell.LinkTarget
+	if target == "" && cell.ScreenTip != "" {
+		target = bookmark
+	}
+	if target != "" {
+		fmt.Fprintf(b, `<w:hyperlink w:anchor="%s"`, target)
+		if cell.ScreenTip != "" {
+			b.WriteString(` w:tooltip="`)
+			if err := writeScreenTipAttribute(ctx, b, cell.ScreenTip); err != nil {
+				return err
+			}
+			b.WriteString(`"`)
+		}
+		b.WriteString(` w:history="0">`)
+	}
+
 	runs := cell.Runs
 	if len(runs) == 0 {
 		runs = []CellRun{{Text: cell.Text}}
@@ -346,6 +384,9 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		if runColor == "" {
 			runColor = color
 		}
+		if cell.LinkTarget != "" && runColor == "" {
+			runColor = navigation.LinkColor
+		}
 		text := run.Text
 		// Formatting boundaries must not turn one CRLF into two line breaks.
 		// Empty spans retain the pending CR state until the next text arrives.
@@ -355,12 +396,15 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		if run.Text != "" {
 			previousCR = strings.HasSuffix(run.Text, "\r")
 		}
-		if err := writeRun(ctx, b, text, runColor, cell.Bold, run.Italic, size); err != nil {
+		if err := writeRun(ctx, b, text, runColor, cell.Bold, run.Italic, size, cell.LinkTarget != ""); err != nil {
 			return err
 		}
 	}
-	if cell.ScreenTip != "" {
-		fmt.Fprintf(b, `</w:hyperlink><w:bookmarkEnd w:id="%d"/>`, bookmarkID)
+	if target != "" {
+		b.WriteString(`</w:hyperlink>`)
+	}
+	if bookmark != "" {
+		writeBookmarkEnd(b, bookmarkID)
 	}
 	b.WriteString(`</w:p>`)
 	return nil
@@ -372,9 +416,9 @@ func paragraph(style, text string) string {
 	return b.String()
 }
 
-func (d *Document) body(ctx context.Context) (string, error) {
+func (d *Document) body(ctx context.Context, names map[string]bool) (string, error) {
 	var b strings.Builder
-	nextBookmarkID := 0
+	bookmarks := bookmarkState{reserved: names}
 	b.WriteString(`<w:document xmlns:w="` + wordNS + `" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`)
 	for i, item := range d.blocks {
 		if err := ctx.Err(); err != nil {
@@ -385,11 +429,15 @@ func (d *Document) body(ctx context.Context) (string, error) {
 			b.WriteString(`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`)
 		case item.table != nil:
 			spaceAfter := i+1 >= len(d.blocks) || !d.blocks[i+1].pageBreakBefore
-			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter, item.codeTable, &nextBookmarkID); err != nil {
+			if err := writeTable(ctx, &b, *item.table, d.options, spaceAfter, item.codeTable, &bookmarks); err != nil {
 				return "", err
 			}
 		default:
-			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore); err != nil {
+			marks := make([]namedBookmark, 0, len(item.bookmarks))
+			for _, name := range item.bookmarks {
+				marks = append(marks, namedBookmark{name, bookmarks.next(false)})
+			}
+			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore, marks...); err != nil {
 				return "", err
 			}
 		}
@@ -405,7 +453,7 @@ func (d *Document) body(ctx context.Context) (string, error) {
 	return b.String(), nil
 }
 
-func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter, code bool, nextBookmarkID *int) error {
+func writeTable(ctx context.Context, b *strings.Builder, t Table, options Options, spaceAfter, code bool, bookmarks *bookmarkState) error {
 	appearance := tableStyleFor(options)
 	if code {
 		// The code palette is local to this block; ordinary table defaults and
@@ -481,9 +529,8 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 				color = appearance.HeaderTextColor
 			}
 			bookmarkID := 0
-			if c.ScreenTip != "" {
-				*nextBookmarkID++
-				bookmarkID = *nextBookmarkID
+			if c.Bookmark != "" || c.ScreenTip != "" && c.LinkTarget == "" {
+				bookmarkID = bookmarks.next(c.Bookmark == "")
 			}
 			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarkID); err != nil {
 				return err

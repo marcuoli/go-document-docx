@@ -32,8 +32,17 @@ const (
 
 // Cell contains exact text and an optional visual hint; numbers remain exact text.
 type Cell struct {
-	Text string
-	Tone Tone
+	// Bookmark names this cell's literal paragraph as an internal destination.
+	// Empty adds none. Write validates the shared Word name rules and uniqueness
+	// across named cells and BookmarkNext requests before sending output.
+	Bookmark string
+	// LinkTarget names an exact bookmark in this document; forward references are
+	// allowed. Nonempty applies the shared navigation color and underline, keeping
+	// explicit Cell/CellRun colors, emphasis, size and literal text. ScreenTip then
+	// annotates this same link. Write rejects invalid or unresolved targets.
+	LinkTarget string
+	Text       string
+	Tone       Tone
 	// TextColor is an optional six-digit RGB color without a leading #.
 	// Empty inherits the paragraph style; it does not change the fill tone.
 	TextColor string
@@ -73,6 +82,7 @@ type Table struct {
 
 type block struct {
 	style, text     string
+	bookmarks       []string
 	table           *Table
 	pageBreak       bool
 	pageBreakBefore bool
@@ -82,8 +92,9 @@ type block struct {
 // Document owns an ordered snapshot of report blocks. It is not concurrency safe.
 // Write validates all input before sending bytes to its writer.
 type Document struct {
-	options Options
-	blocks  []block
+	options          Options
+	blocks           []block
+	pendingBookmarks []string
 }
 
 // New constructs a document with explicit options. Invalid dimensions or font sizes
@@ -128,16 +139,16 @@ func validateOptions(options Options) error {
 }
 
 // Title appends a Word Title paragraph suitable for a report cover.
-func (d *Document) Title(text string) { d.blocks = append(d.blocks, block{style: "Title", text: text}) }
+func (d *Document) Title(text string) { d.appendParagraph(block{style: "Title", text: text}) }
 
 // Subtitle appends secondary cover text in black using the Subtitle style.
 func (d *Document) Subtitle(text string) {
-	d.blocks = append(d.blocks, block{style: "Subtitle", text: text})
+	d.appendParagraph(block{style: "Subtitle", text: text})
 }
 
 // Heading appends a navigable heading at level 1, 2 or 3. Write rejects other levels.
 func (d *Document) Heading(text string, level int) {
-	d.blocks = append(d.blocks, block{style: fmt.Sprintf("Heading%d", level), text: text})
+	d.appendParagraph(block{style: fmt.Sprintf("Heading%d", level), text: text})
 }
 
 // HeadingOnNewPage appends a navigable level 1, 2 or 3 heading with a page
@@ -145,20 +156,20 @@ func (d *Document) Heading(text string, level int) {
 // full table; the preceding table's spacer is omitted. Write rejects other levels.
 // Literal-text and keep-next behavior match Heading; no new section is created.
 func (d *Document) HeadingOnNewPage(text string, level int) {
-	d.blocks = append(d.blocks, block{style: fmt.Sprintf("Heading%d", level), text: text, pageBreakBefore: true})
+	d.appendParagraph(block{style: fmt.Sprintf("Heading%d", level), text: text, pageBreakBefore: true})
 }
 
 // Paragraph appends literal prose. Newlines become soft breaks; tabs remain tabs.
 // No text is interpreted as markup, formulas, fields or hyperlinks.
 func (d *Document) Paragraph(text string) {
-	d.blocks = append(d.blocks, block{style: "Normal", text: text})
+	d.appendParagraph(block{style: "Normal", text: text})
 }
 
 // ParagraphWithNext appends literal prose with keep-next and keep-lines hints.
 // It is useful before a table; the reader still controls final pagination and
 // can split content taller than a page. Literal-text rules match Paragraph.
 func (d *Document) ParagraphWithNext(text string) {
-	d.blocks = append(d.blocks, block{style: "Lead", text: text})
+	d.appendParagraph(block{style: "Lead", text: text})
 }
 
 // PageBreak starts the next block on a new page without creating a section.
