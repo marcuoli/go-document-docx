@@ -206,7 +206,8 @@ d.Heading("Details", 1)
 ```
 
 Names use 1–40 ASCII letters, digits or underscores and start with a letter or
-underscore. Targets use exact spelling. `Write` rejects invalid/duplicate names,
+underscore. Names duplicated ignoring ASCII case are rejected; serialized names
+and targets retain exact spelling. `Write` rejects invalid/duplicate names,
 unresolved targets and a queued request with no following paragraph before
 emitting output. Tables/code tables and page breaks do not consume a queued
 request; multiple queued names can share one paragraph.

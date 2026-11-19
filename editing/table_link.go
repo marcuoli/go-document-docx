@@ -54,7 +54,7 @@ func (t *Table) Link(row, column int, text, target, tooltip string, internal boo
 	t.styles[key] = mergeStyle(t.styles[key], style)
 	return nil
 }
-func cellLink(cell *etree.Element, link link, relations *etree.Document, names map[string]bool) error {
+func cellLink(cell *etree.Element, link link, relations *etree.Document, names map[string]string) error {
 	paragraphs := opc.Elements(cell, opc.Word, "p")
 	if len(paragraphs) != 1 {
 		return fmt.Errorf("unsupported linked-cell layout")
@@ -71,7 +71,7 @@ func cellLink(cell *etree.Element, link link, relations *etree.Document, names m
 	}
 	hyperlink := etree.NewElement("w:hyperlink")
 	if link.internal {
-		if !names[link.target] {
+		if names[navigation.BookmarkKey(link.target)] != link.target {
 			return fmt.Errorf("missing cell-link bookmark %q", link.target)
 		}
 		hyperlink.CreateAttr("w:anchor", link.target)

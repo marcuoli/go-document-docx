@@ -34,7 +34,7 @@ const (
 type Cell struct {
 	// Bookmark names this cell's literal paragraph as an internal destination.
 	// Empty adds none. Write validates the shared Word name rules and uniqueness
-	// across named cells and BookmarkNext requests before sending output.
+	// ignoring ASCII case across named cells and BookmarkNext requests before output.
 	Bookmark string
 	// LinkTarget names an exact bookmark in this document; forward references are
 	// allowed. Nonempty applies the shared navigation color and underline, keeping

@@ -427,7 +427,7 @@ func paragraph(style, text string) string {
 	return b.String()
 }
 
-func (d *Document) body(ctx context.Context, names map[string]bool) (string, error) {
+func (d *Document) body(ctx context.Context, names map[string]string) (string, error) {
 	var b strings.Builder
 	bookmarks := bookmarkState{reserved: names}
 	b.WriteString(`<w:document xmlns:w="` + wordNS + `" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>`)

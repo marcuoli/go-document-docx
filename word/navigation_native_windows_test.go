@@ -28,12 +28,16 @@ func TestNativeWordFollowsComposedLiteralNavigation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		d.AddTable(document.Table{Headers: []string{"Section"}, Widths: []int{5000}, Rows: [][]document.Cell{{{Text: "Jump " + label, LinkTarget: "scope", ScreenTip: "Navigate " + label}}}})
+		name := "scope"
 		if label == "Main" {
-			d.BookmarkNext("Closing1_scope")
+			name = "Scope"
+		}
+		d.AddTable(document.Table{Headers: []string{"Section"}, Widths: []int{5000}, Rows: [][]document.Cell{{{Text: "Jump " + label, LinkTarget: name, ScreenTip: "Navigate " + label}}}})
+		if label == "Main" {
+			d.BookmarkNext("closing1_scope")
 			d.Paragraph("Reserved candidate")
 		}
-		d.BookmarkNext("scope")
+		d.BookmarkNext(name)
 		d.Paragraph(label + " destination")
 		var b bytes.Buffer
 		if err := d.Write(t.Context(), &b); err != nil {

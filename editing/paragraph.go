@@ -209,7 +209,7 @@ func (d *Document) Caption(label, text string) (*Paragraph, error) {
 }
 
 // Bookmark marks the paragraph with a unique Word-compatible name. Duplicate
-// names, including names from a loaded template, are rejected at Write.
+// names ignoring ASCII case, including names from a loaded template, are rejected at Write.
 func (p *Paragraph) Bookmark(name string) error {
 	if err := navigation.ValidateBookmarkName(name); err != nil {
 		return err

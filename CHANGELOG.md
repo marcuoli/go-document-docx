@@ -4,6 +4,8 @@
 
 ## 0.9.0
 
+- Reject case-variant bookmark duplicates before Word can replace a destination; reserve tooltip/imported names ignoring case and remap imported case-alias anchors (#42).
+
 - Add literal Cell.Bookmark/Cell.LinkTarget destinations and styled internal links, plus layout-free Document.BookmarkNext anchors; preflight names/targets, preserve tooltip-only output and reuse editor validation/styles (#42).
 - Use keyed external Cell literals for the additive navigation fields. Verify forward references, template collisions and native Word field-refresh/navigation without changing dependencies (#42).
 

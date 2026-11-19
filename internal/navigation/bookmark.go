@@ -19,3 +19,23 @@ func ValidateBookmarkName(name string) error {
 	}
 	return nil
 }
+
+// BookmarkKey compares names without ASCII case, matching Word's uniqueness
+// rule for authored names. Keep the original spelling in serialized markup.
+func BookmarkKey(name string) string {
+	// Existing templates may contain non-ASCII names. Fold only the SDK's
+	// authored ASCII alphabet, leaving every other byte and spelling unchanged.
+	var folded []byte
+	for i := range len(name) {
+		if name[i] >= 'A' && name[i] <= 'Z' {
+			if folded == nil {
+				folded = []byte(name)
+			}
+			folded[i] = name[i] + ('a' - 'A')
+		}
+	}
+	if folded == nil {
+		return name
+	}
+	return string(folded)
+}

@@ -138,3 +138,182 @@ func TestBookmarkFallbackSearchAdvancesAcrossImports(t *testing.T) {
 	}
 	t.Logf("%d bookmarks: %d cancellation checkpoints", count, ctx.calls)
 }
+
+func TestComposeRemapsCaseVariantNamesAndLinkSpelling(t *testing.T) {
+	first := literalNavigationPage(t, "First")
+	last := literalNavigationPage(t, "Imported")
+	// The main owns Scope and closing1_scope; the imported document owns scope
+	// and its external author used Word's equivalent SCOPE anchor spelling.
+	pkg, err := opc.Read(t.Context(), first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+		name := opc.Attr(mark, opc.Word, "name")
+		if name == "scope" {
+			setAttr(mark, opc.Word, "name", "Scope")
+		}
+		if name == "Closing1_scope" {
+			setAttr(mark, opc.Word, "name", "closing1_scope")
+		}
+	}
+	for _, link := range opc.Elements(doc.Root(), opc.Word, "hyperlink") {
+		if opc.Attr(link, opc.Word, "anchor") == "scope" {
+			setAttr(link, opc.Word, "anchor", "Scope")
+		}
+	}
+	if err := pkg.SetXML("word/document.xml", doc); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := pkg.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	first = bytes.Clone(b.Bytes())
+	pkg, err = opc.Read(t.Context(), last)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err = pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range opc.Elements(doc.Root(), opc.Word, "hyperlink") {
+		if opc.Attr(link, opc.Word, "anchor") == "scope" {
+			setAttr(link, opc.Word, "anchor", "SCOPE")
+		}
+	}
+	if err := pkg.SetXML("word/document.xml", doc); err != nil {
+		t.Fatal(err)
+	}
+	b.Reset()
+	if err := pkg.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	last = bytes.Clone(b.Bytes())
+	combined, err := Compose(t.Context(), first, last)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, err = opc.Read(t.Context(), combined)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err = pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]string{}
+	for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+		key := strings.ToLower(opc.Attr(mark, opc.Word, "name"))
+		if _, exists := names[key]; exists {
+			t.Fatal("case-variant collision", key)
+		}
+		var text strings.Builder
+		for _, node := range opc.Elements(mark.Parent(), opc.Word, "t") {
+			text.WriteString(node.Text())
+		}
+		names[key] = text.String()
+	}
+	found := false
+	for _, link := range opc.Elements(doc.Root(), opc.Word, "hyperlink") {
+		var text strings.Builder
+		for _, node := range opc.Elements(link, opc.Word, "t") {
+			text.WriteString(node.Text())
+		}
+		if text.String() == "Imported heading link" {
+			found = true
+			target := opc.Attr(link, opc.Word, "anchor")
+			if names[strings.ToLower(target)] != "Imported heading" {
+				t.Fatal("case-alias link retargeted", target, names)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("imported link missing")
+	}
+}
+
+func TestComposeRejectsCaseAmbiguousInputBookmarks(t *testing.T) {
+	base := literalNavigationPage(t, "First")
+	for _, closing := range []bool{false, true} {
+		pkg, err := opc.Read(t.Context(), base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc, err := pkg.XML("word/document.xml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+			if opc.Attr(mark, opc.Word, "name") == "Closing1_scope" {
+				setAttr(mark, opc.Word, "name", "SCOPE")
+			}
+		}
+		if err := pkg.SetXML("word/document.xml", doc); err != nil {
+			t.Fatal(err)
+		}
+		var b bytes.Buffer
+		if err := pkg.Write(t.Context(), &b); err != nil {
+			t.Fatal(err)
+		}
+		first, last := b.Bytes(), literalNavigationPage(t, "Imported")
+		if closing {
+			first, last = last, first
+		}
+		output, err := Compose(t.Context(), first, last)
+		if err == nil || len(output) != 0 {
+			t.Fatal("ambiguous input composed", closing, err)
+		}
+	}
+}
+
+func TestComposePreservesExternalNonASCIINameBytes(t *testing.T) {
+	external := literalNavigationPage(t, "First")
+	pkg, err := opc.Read(t.Context(), external)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+		switch opc.Attr(mark, opc.Word, "name") {
+		case "Closing1_scope":
+			setAttr(mark, opc.Word, "name", "İtem")
+		case "Closing1_bookmark_6":
+			setAttr(mark, opc.Word, "name", "item")
+		}
+	}
+	if err := pkg.SetXML("word/document.xml", doc); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := pkg.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	output, err := Compose(t.Context(), literalNavigationPage(t, "Imported"), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkg, err = opc.Read(t.Context(), output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err = pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]bool{}
+	for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+		found[opc.Attr(mark, opc.Word, "name")] = true
+	}
+	if !found["İtem"] || !found["item"] {
+		t.Fatal("external non-ASCII names folded or renamed", found)
+	}
+}

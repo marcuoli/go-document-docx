@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
@@ -52,14 +53,17 @@ func (d *Document) amend(ctx context.Context, p *opc.Package) error {
 	if err != nil {
 		return err
 	}
-	names := map[string]bool{}
+	// Word replaces names that differ only by case. Retain canonical spelling
+	// as the value so authored link targets still require their exact spelling.
+	names := map[string]string{}
 	maxID := 0
 	for _, start := range opc.Elements(xml.Root(), opc.Word, "bookmarkStart") {
 		name := opc.Attr(start, opc.Word, "name")
-		if names[name] {
+		key := navigation.BookmarkKey(name)
+		if _, exists := names[key]; exists {
 			return fmt.Errorf("duplicate bookmark name")
 		}
-		names[name] = true
+		names[key] = name
 	}
 	for _, tag := range []string{"bookmarkStart", "bookmarkEnd"} {
 		for _, e := range opc.Elements(xml.Root(), opc.Word, tag) {
@@ -86,10 +90,11 @@ func (d *Document) amend(ctx context.Context, p *opc.Package) error {
 			return err
 		}
 		if paragraph.bookmark != "" {
-			if names[paragraph.bookmark] {
+			key := navigation.BookmarkKey(paragraph.bookmark)
+			if _, exists := names[key]; exists {
 				return fmt.Errorf("duplicate bookmark %q", paragraph.bookmark)
 			}
-			names[paragraph.bookmark] = true
+			names[key] = paragraph.bookmark
 			maxID++
 			start := etree.NewElement("w:bookmarkStart")
 			start.CreateAttr("w:id", strconv.Itoa(maxID))
@@ -137,7 +142,7 @@ func (d *Document) amend(ctx context.Context, p *opc.Package) error {
 			}
 			e := etree.NewElement("w:hyperlink")
 			if link.internal {
-				if !names[link.target] {
+				if names[navigation.BookmarkKey(link.target)] != link.target {
 					return fmt.Errorf("missing bookmark target %q", link.target)
 				}
 				e.CreateAttr("w:anchor", link.target)

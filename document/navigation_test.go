@@ -170,17 +170,25 @@ func TestBookmarkNextAddsNoParagraphAndSkipsTablesAndBreaks(t *testing.T) {
 
 func TestLiteralNavigationGeneratedNamesCannotCollide(t *testing.T) {
 	d := fixture(t)
-	d.BookmarkNext("DocxCellTip2")
+	d.BookmarkNext("docxcelltip2")
 	d.Paragraph("Reserved caller name")
 	d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{
-		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "DocxCellTip2", ScreenTip: "tip"}},
+		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "docxcelltip2", ScreenTip: "tip"}},
 	}})
 	var b bytes.Buffer
 	if err := d.Write(t.Context(), &b); err != nil {
 		t.Fatal(err)
 	}
 	got := inspectNavigation(t, b.Bytes())
-	if got.Text["DocxCellTip2"] != "Reserved caller name" || len(got.Names) != 4 || len(got.Links) != 3 || got.Links[2].Target != "DocxCellTip2" {
+	folded := map[string]bool{}
+	for name := range got.Names {
+		key := strings.ToLower(name)
+		if folded[key] {
+			t.Fatal("case-variant generated bookmark collision", got.Names)
+		}
+		folded[key] = true
+	}
+	if got.Text["docxcelltip2"] != "Reserved caller name" || len(got.Names) != 4 || len(got.Links) != 3 || got.Links[2].Target != "docxcelltip2" {
 		t.Fatal(got)
 	}
 }
@@ -207,6 +215,22 @@ func TestLiteralNavigationRejectsBeforeOutput(t *testing.T) {
 			d.BookmarkNext("same")
 			d.Paragraph("a")
 			d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{{{Text: "b", Bookmark: "same"}}}})
+		}},
+		{"case duplicate", func(d *document.Document) {
+			d.BookmarkNext("CaseTarget")
+			d.Paragraph("one")
+			d.BookmarkNext("casetarget")
+			d.Paragraph("two")
+		}},
+		{"case duplicate cell paragraph", func(d *document.Document) {
+			d.BookmarkNext("CaseTarget")
+			d.Paragraph("one")
+			d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{{{Text: "two", Bookmark: "casetarget"}}}})
+		}},
+		{"target spelling remains exact", func(d *document.Document) {
+			d.BookmarkNext("CaseTarget")
+			d.Paragraph("one")
+			d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{{{Text: "link", LinkTarget: "casetarget"}}}})
 		}},
 		{"dangling", func(d *document.Document) { d.BookmarkNext("later"); d.PageBreak(); d.CodeTable("H", "literal") }},
 		{"invalid cell", func(d *document.Document) {

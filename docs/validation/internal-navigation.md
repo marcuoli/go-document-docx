@@ -12,7 +12,10 @@ paragraph/heading without adding a paragraph. Multiple queued names share that
 paragraph; tables/code tables and page breaks leave the queue pending.
 
 Names are 1–40 ASCII letters/digits/underscores, with a letter or underscore
-first. Names and targets use exact spelling. Forward references are accepted.
+first. Names duplicated ignoring ASCII case are rejected because Word otherwise
+replaces a destination. Serialized names retain spelling; authored targets must
+match it exactly. Imported case-alias anchors are remapped to the same destination.
+Forward references are accepted.
 Write rejects invalid/duplicate names, dangling queued requests and unresolved
 targets before writing any ZIP bytes. User names and generated tooltip names
 receive unique numeric IDs; generated names avoid all reserved user names.

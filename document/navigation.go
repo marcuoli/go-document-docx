@@ -12,8 +12,9 @@ import (
 // layout content. Tables, code tables and page breaks do not consume the request;
 // multiple requests share that next paragraph. Names use 1..40 ASCII letters,
 // digits or underscores, beginning with a letter or underscore. Write rejects
-// invalid/duplicate names and requests left without a paragraph. Names and link
-// targets use exact spelling. Like other construction methods, use serially.
+// invalid names, duplicates ignoring ASCII case and requests left without a
+// paragraph. Serialized names retain spelling; targets must match that spelling.
+// Like other construction methods, use serially.
 func (d *Document) BookmarkNext(name string) {
 	d.pendingBookmarks = append(d.pendingBookmarks, name)
 }
@@ -26,11 +27,11 @@ func (d *Document) appendParagraph(item block) {
 
 // Resolve all names before body generation so forward references are ordinary
 // links, and no invalid navigation can leave a partially written ZIP.
-func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error) {
+func (d *Document) navigationNames(ctx context.Context) (map[string]string, error) {
 	if len(d.pendingBookmarks) > 0 {
 		return nil, fmt.Errorf("bookmark request has no following paragraph")
 	}
-	names := map[string]bool{}
+	names := map[string]string{}
 	add := func(name string) error {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -38,10 +39,11 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error)
 		if err := navigation.ValidateBookmarkName(name); err != nil {
 			return err
 		}
-		if names[name] {
+		key := navigation.BookmarkKey(name)
+		if _, exists := names[key]; exists {
 			return fmt.Errorf("duplicate bookmark %q", name)
 		}
-		names[name] = true
+		names[key] = name
 		return nil
 	}
 	for _, item := range d.blocks {
@@ -84,7 +86,7 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error)
 				if err := navigation.ValidateBookmarkName(cell.LinkTarget); err != nil {
 					return nil, err
 				}
-				if !names[cell.LinkTarget] {
+				if names[navigation.BookmarkKey(cell.LinkTarget)] != cell.LinkTarget {
 					return nil, fmt.Errorf("missing bookmark target %q", cell.LinkTarget)
 				}
 			}
@@ -95,7 +97,7 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]bool, error)
 
 type bookmarkState struct {
 	id       int
-	reserved map[string]bool
+	reserved map[string]string
 }
 
 func (s *bookmarkState) next(ctx context.Context, selfLink bool) (int, error) {
@@ -104,7 +106,7 @@ func (s *bookmarkState) next(ctx context.Context, selfLink bool) (int, error) {
 			return 0, err
 		}
 		s.id++
-		if !selfLink || !s.reserved[fmt.Sprintf("DocxCellTip%d", s.id)] {
+		if !selfLink || s.reserved[navigation.BookmarkKey(fmt.Sprintf("DocxCellTip%d", s.id))] == "" {
 			return s.id, nil
 		}
 	}

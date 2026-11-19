@@ -7,10 +7,11 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
-func (t *Table) amend(node *etree.Element, id *int, names map[string]bool, relations *etree.Document) error {
+func (t *Table) amend(node *etree.Element, id *int, names map[string]string, relations *etree.Document) error {
 	normalizeText(node)
 	pr := properties(node, "tblPr")
 	layout := ordered(pr, "tblLayout", tableOrder)
@@ -147,11 +148,11 @@ func (t *Table) amend(node *etree.Element, id *int, names map[string]bool, relat
 					for {
 						name = fmt.Sprintf("cell_value_%d", *id+1)
 						*id += 1
-						if !names[name] {
+						if names[navigation.BookmarkKey(name)] == "" {
 							break
 						}
 					}
-					names[name] = true
+					names[navigation.BookmarkKey(name)] = name
 					start := etree.NewElement("w:bookmarkStart")
 					start.CreateAttr("w:id", strconv.Itoa(*id))
 					start.CreateAttr("w:name", name)

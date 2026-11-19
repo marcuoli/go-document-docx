@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/beevik/etree"
+	"github.com/marcuoli/go-document-docx/internal/navigation"
 	"github.com/marcuoli/go-document-docx/internal/opc"
 )
 
@@ -120,7 +121,11 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 	names := map[string]bool{}
 	maxID := 0
 	for _, e := range opc.Elements(master.Root(), opc.Word, "bookmarkStart") {
-		names[opc.Attr(e, opc.Word, "name")] = true
+		key := navigation.BookmarkKey(opc.Attr(e, opc.Word, "name"))
+		if names[key] {
+			return nil, fmt.Errorf("duplicate main bookmark name")
+		}
+		names[key] = true
 	}
 	for _, tag := range []string{"bookmarkStart", "bookmarkEnd"} {
 		for _, e := range opc.Elements(master.Root(), opc.Word, tag) {
@@ -135,28 +140,28 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 	fallbackID := maxID + 1
 	for _, e := range opc.Elements(other, opc.Word, "bookmarkStart") {
 		oldID, oldName := opc.Attr(e, opc.Word, "id"), opc.Attr(e, opc.Word, "name")
-		if oldID == "" || oldName == "" || bookmarkIDs[oldID] != "" {
+		if oldID == "" || oldName == "" || bookmarkIDs[oldID] != "" || bookmarkNames[navigation.BookmarkKey(oldName)] != "" {
 			return nil, fmt.Errorf("invalid closing bookmark")
 		}
 		maxID++
 		bookmarkIDs[oldID] = strconv.Itoa(maxID)
 		name := oldName
-		if names[name] {
+		if names[navigation.BookmarkKey(name)] {
 			name = prefix + oldName
 		}
 		// Caller names may already occupy both the prefixed spelling and
 		// generated fallbacks. Advance one shared counter so occupied intervals
 		// are examined only once across all imports, without changing targets.
 		fallbackID = max(fallbackID, maxID)
-		for len(name) > 40 || names[name] {
+		for len(name) > 40 || names[navigation.BookmarkKey(name)] {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
 			name = fmt.Sprintf("%sbookmark_%d", prefix, fallbackID)
 			fallbackID++
 		}
-		names[name] = true
-		bookmarkNames[oldName] = name
+		names[navigation.BookmarkKey(name)] = true
+		bookmarkNames[navigation.BookmarkKey(oldName)] = name
 	}
 	drawingID := 0
 	for _, e := range all(master.Root()) {
@@ -193,11 +198,11 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 					setAttr(e, opc.Word, "id", replacement)
 				}
 				if e.Tag == "bookmarkStart" {
-					setAttr(e, opc.Word, "name", bookmarkNames[opc.Attr(e, opc.Word, "name")])
+					setAttr(e, opc.Word, "name", bookmarkNames[navigation.BookmarkKey(opc.Attr(e, opc.Word, "name"))])
 				}
 				if e.Tag == "hyperlink" {
 					if name := opc.Attr(e, opc.Word, "anchor"); name != "" {
-						if replacement := bookmarkNames[name]; replacement != "" {
+						if replacement := bookmarkNames[navigation.BookmarkKey(name)]; replacement != "" {
 							setAttr(e, opc.Word, "anchor", replacement)
 						}
 					}

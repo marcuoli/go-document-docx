@@ -3,6 +3,7 @@ package editing_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -193,5 +194,173 @@ func TestIndependentListsPreserveLegacySharedSequence(t *testing.T) {
 	}
 	if _, err := independent.Item("Invalid", 9); err == nil {
 		t.Fatal("invalid list level accepted")
+	}
+}
+
+func TestWriteRejectsCaseVariantBookmarks(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"CaseTarget", "casetarget"} {
+		p, err := d.Paragraph(name, editing.ParagraphOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := p.Bookmark(name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var b bytes.Buffer
+	if err := d.Write(t.Context(), &b); err == nil || b.Len() != 0 {
+		t.Fatal("case-variant duplicates published", err, b.Len())
+	}
+}
+func TestGeneratedCellBookmarkAvoidsCaseVariantCallerName(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := d.Paragraph("Reserved", editing.ParagraphOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Bookmark("CELL_VALUE_2"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := d.Table(tabledata.Data{Headers: []string{"Name"}, Rows: [][]string{{"A_LONG_LITERAL_IDENTIFIER"}}}, editing.TableOptions{Columns: []editing.Column{{Width: "100%", SingleLine: true, Ellipsis: 8}}}); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := d.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	pkg, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := pkg.XML("word/document.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+		key := strings.ToLower(opc.Attr(mark, opc.Word, "name"))
+		if seen[key] {
+			t.Fatal("case-variant tooltip collision", key)
+		}
+		seen[key] = true
+	}
+	if !seen["cell_value_2"] || !seen["cell_value_3"] {
+		t.Fatal("caller or generated bookmark missing", seen)
+	}
+}
+
+func TestLoadedBookmarkRejectsCaseVariantAddition(t *testing.T) {
+	d, err := editing.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := d.Paragraph("Existing", editing.ParagraphOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Bookmark("CaseTarget"); err != nil {
+		t.Fatal(err)
+	}
+	var original bytes.Buffer
+	if err := d.Write(t.Context(), &original); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := editing.Open(t.Context(), original.Bytes(), report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	added, err := loaded.Paragraph("Added", editing.ParagraphOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := added.Bookmark("casetarget"); err != nil {
+		t.Fatal(err)
+	}
+	var b bytes.Buffer
+	if err := loaded.Write(t.Context(), &b); err == nil || !strings.Contains(err.Error(), "duplicate bookmark") || b.Len() != 0 {
+		t.Fatal("loaded case collision not rejected", err, b.Len())
+	}
+}
+
+func TestAuthoredLinkSpellingIsExactOnBothEditorPaths(t *testing.T) {
+	for _, route := range []string{"paragraph", "table"} {
+		for _, wrongCase := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/wrong_case_%t", route, wrongCase), func(t *testing.T) {
+				d, err := editing.New(report.Defaults())
+				if err != nil {
+					t.Fatal(err)
+				}
+				destination, err := d.Paragraph("Destination", editing.ParagraphOptions{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := destination.Bookmark("MixedCase"); err != nil {
+					t.Fatal(err)
+				}
+				target := "MixedCase"
+				if wrongCase {
+					target = "mixedcase"
+				}
+				if route == "paragraph" {
+					p, err := d.Paragraph("", editing.ParagraphOptions{})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := p.Link("Go", target, "", true); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					table, err := d.Table(tabledata.Data{Headers: []string{"Value"}, Rows: [][]string{{"Go"}}}, editing.TableOptions{Columns: []editing.Column{{Width: "100%"}}})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := table.Link(1, 0, "Go", target, "", true); err != nil {
+						t.Fatal(err)
+					}
+				}
+				var b bytes.Buffer
+				err = d.Write(t.Context(), &b)
+				if wrongCase {
+					if err == nil || b.Len() != 0 {
+						t.Fatal("wrong-case target published", err, b.Len())
+					}
+					return
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				pkg, err := opc.Read(t.Context(), b.Bytes())
+				if err != nil {
+					t.Fatal(err)
+				}
+				doc, err := pkg.XML("word/document.xml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				bookmark, anchor := false, false
+				for _, mark := range opc.Elements(doc.Root(), opc.Word, "bookmarkStart") {
+					if opc.Attr(mark, opc.Word, "name") == "MixedCase" {
+						bookmark = true
+					}
+				}
+				for _, link := range opc.Elements(doc.Root(), opc.Word, "hyperlink") {
+					if opc.Attr(link, opc.Word, "anchor") == "MixedCase" {
+						anchor = true
+					} else {
+						t.Fatal("serialized anchor spelling changed", opc.Attr(link, opc.Word, "anchor"))
+					}
+				}
+				if !bookmark || !anchor {
+					t.Fatal("exact serialized bookmark/anchor missing", bookmark, anchor)
+				}
+			})
+		}
 	}
 }
