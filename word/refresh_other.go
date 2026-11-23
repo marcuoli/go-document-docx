@@ -10,3 +10,7 @@ func refreshFile(ctx context.Context, _ string) error {
 	}
 	return ErrUnavailable
 }
+
+func exportPDFFile(ctx context.Context, _, _ string) error {
+	return refreshFile(ctx, "")
+}

@@ -19,7 +19,7 @@ var ErrUnavailable = errors.New("Microsoft Word automation is unavailable; Windo
 // Options controls owned staging for Word post-processing.
 type Options struct {
 	// TemporaryDirectory selects private staging; empty uses the process temp directory.
-	// Callers retain ownership of this directory. Only the created file is removed.
+	// Callers retain ownership of this directory. Word removes only its private staging.
 	TemporaryDirectory string
 }
 

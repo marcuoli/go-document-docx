@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"github.com/marcuoli/go-document-docx/publication"
+	"os"
 	"testing"
 )
 
@@ -15,5 +16,18 @@ func TestUnsupportedHostDoesNotWrite(t *testing.T) {
 	err := WithUpdatedFields(publication.FromBytes([]byte("docx")), Options{TemporaryDirectory: t.TempDir()}).Write(context.Background(), &out)
 	if !errors.Is(err, ErrUnavailable) || out.Len() != 0 {
 		t.Fatal(err, out.Len())
+	}
+}
+
+func TestPDFUnsupportedHostDoesNotWrite(t *testing.T) {
+	dir := t.TempDir()
+	var out bytes.Buffer
+	err := PDF(publication.FromBytes([]byte("docx")), Options{TemporaryDirectory: dir}).Write(t.Context(), &out)
+	if !errors.Is(err, ErrUnavailable) || out.Len() != 0 {
+		t.Fatal(err, out.Len())
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		t.Fatal("staging remains", entries, err)
 	}
 }

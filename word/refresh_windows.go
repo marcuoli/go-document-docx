@@ -14,7 +14,44 @@ import (
 
 var wordGate = make(chan struct{}, 1)
 
-func refreshFile(ctx context.Context, path string) (returnedErr error) {
+func refreshFile(ctx context.Context, path string) error {
+	return withDocument(ctx, path, false, func(doc *ole.IDispatch) error {
+		if err := updateIndexes(ctx, doc, "Update"); err != nil {
+			return err
+		}
+		if err := invoke(doc, "Repaginate"); err != nil {
+			return err
+		}
+		if err := updateIndexes(ctx, doc, "UpdatePageNumbers"); err != nil {
+			return err
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		// Updating arbitrary fields could fetch external content or replace
+		// caller-supplied values. Refresh TOCs and caption indexes only.
+		return invoke(doc, "Save")
+	})
+}
+
+func exportPDFFile(ctx context.Context, input, output string) error {
+	return withDocument(ctx, input, true, func(doc *ole.IDispatch) error {
+		const (
+			formatPDF        int32 = 17
+			optimizeForPrint int32 = 0
+			allPages         int32 = 0
+			documentContent  int32 = 0
+			headingBookmarks int32 = 1
+		)
+		// ExportAsFixedFormat ignores From and To for allPages. Keep the
+		// document's sensitivity labels and enable tagged PDF structure.
+		return invoke(doc, "ExportAsFixedFormat", output, formatPDF, false,
+			optimizeForPrint, allPages, int32(1), int32(1), documentContent,
+			false, true, headingBookmarks, true, true, false)
+	})
+}
+
+func withDocument(ctx context.Context, path string, readOnly bool, operation func(*ole.IDispatch) error) (returnedErr error) {
 	select {
 	case wordGate <- struct{}{}:
 		defer func() { <-wordGate }()
@@ -94,29 +131,18 @@ func refreshFile(ctx context.Context, path string) (returnedErr error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	// ConfirmConversions, ReadOnly and AddToRecentFiles are all false. Only the
-	// owned staging file is opened; no source or destination document is edited.
-	doc, err := dispatch(documents, "Open", true, path, false, false, false)
+	// Disable conversion prompts and recent-file registration. Only PDF export
+	// opens its staged copy read-only; field refresh needs to save its copy.
+	doc, err := dispatch(documents, "Open", true, path, false, readOnly, false)
 	if err != nil {
 		return err
 	}
 	defer doc.Release()
 	defer func() { returnedErr = errors.Join(returnedErr, invoke(doc, "Close", 0)) }()
-	if err := updateIndexes(ctx, doc, "Update"); err != nil {
-		return err
-	}
-	if err := invoke(doc, "Repaginate"); err != nil {
-		return err
-	}
-	if err := updateIndexes(ctx, doc, "UpdatePageNumbers"); err != nil {
-		return err
-	}
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	// Updating arbitrary document fields could fetch external content or replace
-	// caller-supplied template values. Refresh TOCs and caption indexes only.
-	return invoke(doc, "Save")
+	return operation(doc)
 }
 
 // dispatch takes its own reference before clearing the returned VARIANT.
