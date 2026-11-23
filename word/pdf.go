@@ -53,7 +53,7 @@ func (s pdfSource) Write(ctx context.Context, w io.Writer) (returnedErr error) {
 	if err != nil {
 		return err
 	}
-	defer func() { returnedErr = errors.Join(returnedErr, os.RemoveAll(dir)) }()
+	defer func() { returnedErr = errors.Join(returnedErr, removePDFStage(dir)) }()
 	input := filepath.Join(dir, "input.docx")
 	output := filepath.Join(dir, "output.pdf")
 	if err := stagePDFInput(ctx, s.source, input); err != nil {

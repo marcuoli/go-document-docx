@@ -31,7 +31,7 @@ func refreshFile(ctx context.Context, path string) error {
 		// Updating arbitrary fields could fetch external content or replace
 		// caller-supplied values. Refresh TOCs and caption indexes only.
 		return invoke(doc, "Save")
-	})
+	}, nil)
 }
 
 func exportPDFFile(ctx context.Context, input, output string) error {
@@ -48,10 +48,10 @@ func exportPDFFile(ctx context.Context, input, output string) error {
 		return invoke(doc, "ExportAsFixedFormat", output, formatPDF, false,
 			optimizeForPrint, allPages, int32(1), int32(1), documentContent,
 			false, true, headingBookmarks, true, true, false)
-	})
+	}, func(err error) error { return reconcilePDFClose(output, err) })
 }
 
-func withDocument(ctx context.Context, path string, readOnly bool, operation func(*ole.IDispatch) error) (returnedErr error) {
+func withDocument(ctx context.Context, path string, readOnly bool, operation func(*ole.IDispatch) error, reconcileClose func(error) error) (returnedErr error) {
 	select {
 	case wordGate <- struct{}{}:
 		defer func() { <-wordGate }()
@@ -138,7 +138,13 @@ func withDocument(ctx context.Context, path string, readOnly bool, operation fun
 		return err
 	}
 	defer doc.Release()
-	defer func() { returnedErr = errors.Join(returnedErr, invoke(doc, "Close", 0)) }()
+	defer func() {
+		closeErr := invoke(doc, "Close", 0)
+		if returnedErr == nil && closeErr != nil && reconcileClose != nil {
+			closeErr = reconcileClose(closeErr)
+		}
+		returnedErr = errors.Join(returnedErr, closeErr)
+	}()
 	if err := ctx.Err(); err != nil {
 		return err
 	}

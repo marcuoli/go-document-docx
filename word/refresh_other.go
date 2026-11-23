@@ -2,7 +2,10 @@
 
 package word
 
-import "context"
+import (
+	"context"
+	"os"
+)
 
 func refreshFile(ctx context.Context, _ string) error {
 	if err := ctx.Err(); err != nil {
@@ -13,4 +16,8 @@ func refreshFile(ctx context.Context, _ string) error {
 
 func exportPDFFile(ctx context.Context, _, _ string) error {
 	return refreshFile(ctx, "")
+}
+
+func removePDFStage(path string) error {
+	return os.RemoveAll(path)
 }

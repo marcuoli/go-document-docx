@@ -4,6 +4,8 @@
 
 - Export finalized DOCX sources as PDF with desktop Word, preserving headings as PDF bookmarks and using atomic publication (#48).
 
+- Accept Word closing an already disconnected document only when the export succeeded and produced a complete PDF (#48).
+
 ## 0.10.0
 
 - Add literal ParagraphRuns with per-run RGB color and paragraph-wide bookmarks. Existing paragraph methods retain their signatures and output (#46).
