@@ -28,7 +28,7 @@ func TestEmptyCellRunsObserveMidRenderCancellation(t *testing.T) {
 	defer cancel()
 	ctx := &cancelOnSecondCheck{Context: base, cancel: cancel}
 	var out strings.Builder
-	err := writeCellParagraph(ctx, &out, "TableText", Cell{Runs: []CellRun{{TextColor: "007F00"}, {TextColor: "B3261E"}, {}}}, "", 0, 0)
+	err := writeCellParagraph(ctx, &out, "TableText", Cell{Runs: []CellRun{{TextColor: "007F00"}, {TextColor: "B3261E"}, {}}}, "", 0, &bookmarkState{})
 	if !errors.Is(err, context.Canceled) || ctx.checks != 2 || strings.Count(out.String(), "<w:r>") != 1 {
 		t.Fatal("empty runs ignored cancellation between runs", err, ctx.checks)
 	}

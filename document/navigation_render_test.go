@@ -13,7 +13,7 @@ func TestNavigationPreservesEachRun(t *testing.T) {
 				{Text: "before\r", Italic: true}, {Text: "", Italic: true}, {Text: "\nação\t<&>", TextColor: "B3261E"}, {Text: " after"},
 			}}
 			var b strings.Builder
-			if err := writeCellParagraph(t.Context(), &b, "TableText", cell, color, 14, 0); err != nil {
+			if err := writeCellParagraph(t.Context(), &b, "TableText", cell, color, 14, &bookmarkState{}); err != nil {
 				t.Fatal(err)
 			}
 			var paragraph struct {

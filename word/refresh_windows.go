@@ -36,6 +36,12 @@ func refreshFile(ctx context.Context, path string) error {
 
 func exportPDFFile(ctx context.Context, input, output string) error {
 	return withDocument(ctx, input, true, func(doc *ole.IDispatch) error {
+		if err := removePDFScreenTipLinks(ctx, doc); err != nil {
+			return fmt.Errorf("suppress PDF ScreenTip links: %w", err)
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		const (
 			formatPDF        int32 = 17
 			optimizeForPrint int32 = 0
@@ -199,8 +205,8 @@ func put(parent *ole.IDispatch, name string, value any) error {
 }
 
 // get releases a failed Invoke result even when COM returns it with an HRESULT error.
-func get(parent *ole.IDispatch, name string) (*ole.VARIANT, error) {
-	value, err := oleutil.GetProperty(parent, name)
+func get(parent *ole.IDispatch, name string, args ...any) (*ole.VARIANT, error) {
+	value, err := oleutil.GetProperty(parent, name, args...)
 	if err != nil {
 		if value != nil {
 			err = errors.Join(err, value.Clear())

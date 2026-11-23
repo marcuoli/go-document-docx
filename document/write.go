@@ -368,7 +368,7 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold,
 	return nil
 }
 
-func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size, bookmarkID int) error {
+func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size int, bookmarks *bookmarkState) error {
 	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" && cell.Bookmark == "" && cell.LinkTarget == "" {
 		return writeParagraph(ctx, b, block{style: style, text: cell.Text}, color, cell.Bold, 0)
 	}
@@ -383,18 +383,31 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		b.WriteString(`<w:jc w:val="` + alignment + `"/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	bookmark := cell.Bookmark
-	if bookmark == "" && cell.ScreenTip != "" && cell.LinkTarget == "" {
-		bookmark = fmt.Sprintf("DocxCellTip%d", bookmarkID)
-	}
-	if bookmark != "" {
-		if err := writeBookmarkStart(ctx, b, bookmark, bookmarkID); err != nil {
+	bookmarkID := 0
+	if cell.Bookmark != "" {
+		var err error
+		bookmarkID, err = bookmarks.next(ctx, false)
+		if err != nil {
+			return err
+		}
+		if err := writeBookmarkStart(ctx, b, cell.Bookmark, bookmarkID); err != nil {
 			return err
 		}
 	}
 	target := cell.LinkTarget
+	tipID := 0
 	if target == "" && cell.ScreenTip != "" {
-		target = bookmark
+		// Keep the authored bookmark independently addressable. Only the
+		// hidden ScreenTip target identifies this hyperlink as automatic.
+		var err error
+		tipID, err = bookmarks.next(ctx, true)
+		if err != nil {
+			return err
+		}
+		target = navigation.CellScreenTipBookmark(tipID)
+		if err := writeBookmarkStart(ctx, b, target, tipID); err != nil {
+			return err
+		}
 	}
 	if target != "" {
 		fmt.Fprintf(b, `<w:hyperlink w:anchor="%s"`, target)
@@ -431,7 +444,12 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 	if target != "" {
 		b.WriteString(`</w:hyperlink>`)
 	}
-	if bookmark != "" {
+	if tipID != 0 {
+		if err := writeBookmarkEnd(ctx, b, tipID); err != nil {
+			return err
+		}
+	}
+	if bookmarkID != 0 {
 		if err := writeBookmarkEnd(ctx, b, bookmarkID); err != nil {
 			return err
 		}
@@ -572,15 +590,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			if header {
 				color = appearance.HeaderTextColor
 			}
-			bookmarkID := 0
-			if c.Bookmark != "" || c.ScreenTip != "" && c.LinkTarget == "" {
-				var err error
-				bookmarkID, err = bookmarks.next(ctx, c.Bookmark == "")
-				if err != nil {
-					return err
-				}
-			}
-			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarkID); err != nil {
+			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarks); err != nil {
 				return err
 			}
 			b.WriteString(`</w:tc>`)

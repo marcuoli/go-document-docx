@@ -15,6 +15,8 @@ import (
 // PDF wraps a finalized DOCX source for export with desktop Microsoft Word.
 // On Write it stages the input on disk, opens the copy read-only, exports all
 // pages with heading bookmarks, and streams the resulting PDF to the writer.
+// Automatic literal cell ScreenTip links to their generated self-anchors
+// are omitted from the PDF. Legacy links to authored bookmarks are preserved.
 // The source and writer remain caller-owned. Only the private staging files
 // are modified, and PDF adds neither a field update nor a DOCX save.
 // Use publication.Save to preserve the destination if export or streaming fails.

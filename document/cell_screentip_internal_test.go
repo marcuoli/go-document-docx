@@ -9,7 +9,7 @@ import (
 
 func TestCellScreenTipBoundedAttributeExpansion(t *testing.T) {
 	var out strings.Builder
-	err := writeCellParagraph(t.Context(), &out, "TableText", Cell{Text: "✔", ScreenTip: strings.Repeat("&", 27<<20)}, "", 0, 1)
+	err := writeCellParagraph(t.Context(), &out, "TableText", Cell{Text: "✔", ScreenTip: strings.Repeat("&", 27<<20)}, "", 0, &bookmarkState{})
 	if err == nil {
 		t.Fatal("expanded XML limit was not enforced")
 	}
@@ -22,7 +22,7 @@ func TestCellScreenTipAttributeCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	var out strings.Builder
-	err := writeCellParagraph(ctx, &out, "TableText", Cell{Text: "✔", ScreenTip: strings.Repeat("&", 1<<20)}, "", 0, 1)
+	err := writeCellParagraph(ctx, &out, "TableText", Cell{Text: "✔", ScreenTip: strings.Repeat("&", 1<<20)}, "", 0, &bookmarkState{})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatal("cancellation identity changed", err)
 	}

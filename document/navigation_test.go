@@ -170,10 +170,10 @@ func TestBookmarkNextAddsNoParagraphAndSkipsTablesAndBreaks(t *testing.T) {
 
 func TestLiteralNavigationGeneratedNamesCannotCollide(t *testing.T) {
 	d := fixture(t)
-	d.BookmarkNext("docxcelltip2")
+	d.BookmarkNext("_docxcelltip2")
 	d.Paragraph("Reserved caller name")
 	d.AddTable(document.Table{Headers: []string{"H"}, Widths: []int{4000}, Rows: [][]document.Cell{
-		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "docxcelltip2", ScreenTip: "tip"}},
+		{{Text: "tip", ScreenTip: "tip"}}, {{Text: "named tip", Bookmark: "with_tip", ScreenTip: "tip"}}, {{Text: "navigation+tip", Bookmark: "own", LinkTarget: "_docxcelltip2", ScreenTip: "tip"}},
 	}})
 	var b bytes.Buffer
 	if err := d.Write(t.Context(), &b); err != nil {
@@ -188,7 +188,16 @@ func TestLiteralNavigationGeneratedNamesCannotCollide(t *testing.T) {
 		}
 		folded[key] = true
 	}
-	if got.Text["docxcelltip2"] != "Reserved caller name" || len(got.Names) != 4 || len(got.Links) != 3 || got.Links[2].Target != "docxcelltip2" {
+	if len(got.Names) != 5 || len(got.Links) != 3 {
+		t.Fatalf("unexpected bookmark or hyperlink count: %+v", got)
+	}
+	if got.Text["_docxcelltip2"] != "Reserved caller name" || got.Text["with_tip"] != "named tip" {
+		t.Fatalf("authored bookmark moved: %+v", got.Text)
+	}
+	if !strings.HasPrefix(got.Links[0].Target, "_DocxCellTip") ||
+		!strings.HasPrefix(got.Links[1].Target, "_DocxCellTip") ||
+		got.Links[0].Target == got.Links[1].Target ||
+		got.Links[2].Target != "_docxcelltip2" {
 		t.Fatal(got)
 	}
 }

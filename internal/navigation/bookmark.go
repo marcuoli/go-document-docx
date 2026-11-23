@@ -1,7 +1,10 @@
 // Package navigation shares literal bookmark names and link presentation.
 package navigation
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // LinkColor is the default RGB used for styled navigation links.
 const LinkColor = "315357"
@@ -38,4 +41,29 @@ func BookmarkKey(name string) string {
 		return name
 	}
 	return string(folded)
+}
+
+const cellTipBookmarkPrefix = "DocxCellTip"
+
+// CellScreenTipBookmark names an automatic literal cell ScreenTip destination.
+// Word hides underscore-prefixed bookmarks in its default bookmark list.
+func CellScreenTipBookmark(id int) string {
+	return fmt.Sprintf("_%s%d", cellTipBookmarkPrefix, id)
+}
+
+// IsCellScreenTipBookmark reports whether a name has the automatic shape
+// used by the literal writer, including its legacy visible prefix. The
+// name alone does not distinguish a ScreenTip from an authored link.
+func IsCellScreenTipBookmark(name string) bool {
+	key := strings.TrimPrefix(BookmarkKey(name), "_")
+	suffix, ok := strings.CutPrefix(key, "docxcelltip")
+	if !ok || len(suffix) == 0 || suffix[0] == '0' {
+		return false
+	}
+	for _, digit := range suffix {
+		if digit < '0' || digit > '9' {
+			return false
+		}
+	}
+	return true
 }

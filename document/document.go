@@ -60,7 +60,8 @@ type Cell struct {
 	Alignment string
 	// ScreenTip is optional literal hover text for the whole cell paragraph.
 	// With LinkTarget it annotates that styled navigation link; otherwise it
-	// uses an internal self-anchor hyperlink without added link styling.
+	// uses its own hidden self-anchor, preserving any authored Bookmark, and
+	// adds no link styling.
 	// Empty preserves existing output. AddTable copies it;
 	// Write validates UTF-8/XML and counts it in the document text/XML limits.
 	// Display and interaction depend on the reader; no visible text is added.

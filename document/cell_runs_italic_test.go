@@ -21,7 +21,7 @@ func TestCellRunItalicPreservesSpanFormatting(t *testing.T) {
 	runs[2].Italic = false
 	owned := d.blocks[0].table
 	var out strings.Builder
-	if err := writeCellParagraph(t.Context(), &out, "TableText", owned.Rows[0][0], "007F00", owned.FontSize, 0); err != nil {
+	if err := writeCellParagraph(t.Context(), &out, "TableText", owned.Rows[0][0], "007F00", owned.FontSize, &bookmarkState{}); err != nil {
 		t.Fatal(err)
 	}
 	var paragraph struct {
