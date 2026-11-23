@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.10.0
+
+- Add literal ParagraphRuns with per-run RGB color and paragraph-wide bookmarks. Existing paragraph methods retain their signatures and output (#46).
+
 ## 0.9.1
 
 - Refresh the official Go dependency graph with x/net v0.63.0, x/tools v0.53.0, go-cmp v0.7.0 and Goldmark v1.8.7. Use govulncheck v1.10.0 for validation. Keep the Go 1.27.4 shipping requirement and verify the separate Go 1.27.3 source boundary (#44).

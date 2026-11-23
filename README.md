@@ -73,6 +73,24 @@ additive for keyed struct literals. External unkeyed `Table` or `CellRun` litera
 must be converted to keyed literals when upgrading to v0.7.0. Cell was already
 slice-bearing and non-comparable; existing ownership rules remain unchanged.
 
+## Colored runs in body paragraphs
+
+Use ordered literal runs when part of a paragraph needs its own text color:
+
+```go
+d.ParagraphRuns(
+    document.ParagraphRun{Text: "Validation passed. "},
+    document.ParagraphRun{Text: "✓", TextColor: "008000"},
+)
+```
+
+An empty color inherits the body style. Supply six hexadecimal RGB digits without
+a leading # for a color override. The method copies its input, keeps the text
+literal and appends one body paragraph, even when called with no runs. As with
+`Paragraph`, `Write` checks text and document limits before sending output.
+`BookmarkNext` names the whole paragraph. The existing `Paragraph` and
+`ParagraphWithNext` methods retain their behavior. See the [runnable example](examples/paragraph-runs).
+
 ## Cell text colors
 
 Literal document cells accept an optional six-digit RGB TextColor, without a leading #. Empty preserves the inherited paragraph color. Text color and fill Tone are independent; callers choose the semantics and supply literal labels or glyphs. Invalid colors are rejected before serialization. Font availability and glyph appearance require qualification in the intended reader.

@@ -131,6 +131,17 @@ func (d *Document) validate(ctx context.Context) error {
 			if err := check(b.text); err != nil {
 				return err
 			}
+			for _, run := range b.runs {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				if !validTextColor(run.TextColor) {
+					return fmt.Errorf("paragraph run text color must contain six hexadecimal RGB digits")
+				}
+				if err := check(run.Text); err != nil {
+					return err
+				}
+			}
 			continue
 		}
 		t := b.table
@@ -212,15 +223,21 @@ func (d *Document) validate(ctx context.Context) error {
 }
 
 func validateCellTextColor(color string) error {
+	if !validTextColor(color) {
+		return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
+	}
+	return nil
+}
+
+func validTextColor(color string) bool {
 	if color == "" {
-		return nil
+		return true
 	}
-	if len(color) == 6 {
-		if _, err := hex.DecodeString(color); err == nil {
-			return nil
-		}
+	if len(color) != 6 {
+		return false
 	}
-	return fmt.Errorf("cell text color must contain six hexadecimal RGB digits")
+	_, err := hex.DecodeString(color)
+	return err == nil
 }
 
 func escape(text string) string {
@@ -283,21 +300,31 @@ func writeText(ctx context.Context, b *strings.Builder, text string) error {
 	return nil
 }
 
-func writeParagraph(ctx context.Context, b *strings.Builder, style, text, color string, bold, pageBreakBefore bool, firstBookmarkID int, bookmarks ...string) error {
-	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
-	if pageBreakBefore {
+func writeParagraph(ctx context.Context, b *strings.Builder, item block, color string, bold bool, firstBookmarkID int) error {
+	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + item.style + `"/>`)
+	if item.pageBreakBefore {
 		b.WriteString(`<w:pageBreakBefore/>`)
 	}
 	b.WriteString(`</w:pPr>`)
-	for i, name := range bookmarks {
+	for i, name := range item.bookmarks {
 		if err := writeBookmarkStart(ctx, b, name, firstBookmarkID+i); err != nil {
 			return err
 		}
 	}
-	if err := writeRun(ctx, b, text, color, bold, false, 0, false); err != nil {
-		return err
+	if len(item.runs) == 0 {
+		if err := writeRun(ctx, b, item.text, color, bold, false, 0, false); err != nil {
+			return err
+		}
+	} else {
+		previousCR := false
+		for _, run := range item.runs {
+			text := continuedRunText(run.Text, &previousCR)
+			if err := writeRun(ctx, b, text, run.TextColor, false, false, 0, false); err != nil {
+				return err
+			}
+		}
 	}
-	for i := len(bookmarks) - 1; i >= 0; i-- {
+	for i := len(item.bookmarks) - 1; i >= 0; i-- {
 		if err := writeBookmarkEnd(ctx, b, firstBookmarkID+i); err != nil {
 			return err
 		}
@@ -343,7 +370,7 @@ func writeRun(ctx context.Context, b *strings.Builder, text, color string, bold,
 
 func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, cell Cell, color string, size, bookmarkID int) error {
 	if len(cell.Runs) == 0 && cell.Alignment == "" && size == 0 && cell.ScreenTip == "" && cell.Bookmark == "" && cell.LinkTarget == "" {
-		return writeParagraph(ctx, b, style, cell.Text, color, cell.Bold, false, 0)
+		return writeParagraph(ctx, b, block{style: style, text: cell.Text}, color, cell.Bold, 0)
 	}
 	b.WriteString(`<w:p><w:pPr><w:pStyle w:val="` + style + `"/>`)
 	if cell.Alignment != "" {
@@ -396,15 +423,7 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		if cell.LinkTarget != "" && runColor == "" {
 			runColor = navigation.LinkColor
 		}
-		text := run.Text
-		// Formatting boundaries must not turn one CRLF into two line breaks.
-		// Empty spans retain the pending CR state until the next text arrives.
-		if previousCR && strings.HasPrefix(text, "\n") {
-			text = text[1:]
-		}
-		if run.Text != "" {
-			previousCR = strings.HasSuffix(run.Text, "\r")
-		}
+		text := continuedRunText(run.Text, &previousCR)
 		if err := writeRun(ctx, b, text, runColor, cell.Bold, run.Italic, size, cell.LinkTarget != ""); err != nil {
 			return err
 		}
@@ -421,9 +440,23 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 	return nil
 }
 
+// continuedRunText keeps a split CRLF as one soft break. Empty runs preserve
+// the pending CR until the next nonempty run arrives.
+func continuedRunText(text string, previousCR *bool) string {
+	if text == "" {
+		return text
+	}
+	skipLF := *previousCR && text[0] == '\n'
+	*previousCR = text[len(text)-1] == '\r'
+	if skipLF {
+		return text[1:]
+	}
+	return text
+}
+
 func paragraph(style, text string) string {
 	var b strings.Builder
-	_ = writeParagraph(context.Background(), &b, style, text, "", false, false, 0)
+	_ = writeParagraph(context.Background(), &b, block{style: style, text: text}, "", false, 0)
 	return b.String()
 }
 
@@ -448,7 +481,7 @@ func (d *Document) body(ctx context.Context, names map[string]string) (string, e
 			// IDs without allocating another record slice for a large bookmark queue.
 			firstID := bookmarks.id + 1
 			bookmarks.id += len(item.bookmarks)
-			if err := writeParagraph(ctx, &b, item.style, item.text, "", false, item.pageBreakBefore, firstID, item.bookmarks...); err != nil {
+			if err := writeParagraph(ctx, &b, item, "", false, firstID); err != nil {
 				return "", err
 			}
 		}

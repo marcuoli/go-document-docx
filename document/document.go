@@ -83,6 +83,7 @@ type Table struct {
 
 type block struct {
 	style, text     string
+	runs            []ParagraphRun
 	bookmarks       []string
 	table           *Table
 	pageBreak       bool

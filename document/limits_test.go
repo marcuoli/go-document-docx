@@ -60,7 +60,7 @@ func TestGeneratedPropertyOrdering(t *testing.T) {
 func TestQueuedBookmarksBoundExpansionAndCancellation(t *testing.T) {
 	var b strings.Builder
 	b.WriteString(strings.Repeat(" ", (128<<20)-120))
-	err := writeParagraph(t.Context(), &b, "Normal", "", "", false, false, 1, "first", "second", "third")
+	err := writeParagraph(t.Context(), &b, block{style: "Normal", bookmarks: []string{"first", "second", "third"}}, "", false, 1)
 	if err == nil || b.Len() > 128<<20 {
 		t.Fatalf("bookmark expansion escaped budget: err=%v bytes=%d", err, b.Len())
 	}
@@ -80,7 +80,7 @@ func TestQueuedBookmarksBoundExpansionAndCancellation(t *testing.T) {
 	}
 	ctx := &bookmarkCancelContext{Context: t.Context(), remaining: 1}
 	b.Reset()
-	err = writeParagraph(ctx, &b, "Normal", "", "", false, false, 1, "first", "second", "third")
+	err = writeParagraph(ctx, &b, block{style: "Normal", bookmarks: []string{"first", "second", "third"}}, "", false, 1)
 	if !errors.Is(err, context.Canceled) || strings.Contains(b.String(), `w:name="third"`) {
 		t.Fatalf("bookmark loop ignored cancellation: %v %s", err, b.String())
 	}
