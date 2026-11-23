@@ -42,12 +42,12 @@ try {
         Invoke-Go -Arguments @('build', '-trimpath', '-buildvcs=false', '-o', $binary, "./examples/$example")
         & $GoExecutable version -m $binary | Set-Content -LiteralPath (Join-Path $output "$example-build-metadata.txt")
         if ($LASTEXITCODE -ne 0) { throw 'Build metadata inspection failed' }
-        if ($Scan) { Invoke-Go -Arguments @('run', 'golang.org/x/vuln/cmd/govulncheck@v1.9.0', '-mode=binary', $binary) }
+        if ($Scan) { Invoke-Go -Arguments @('run', 'golang.org/x/vuln/cmd/govulncheck@v1.10.0', '-mode=binary', $binary) }
     }
     & $GoExecutable env -json GOVERSION GOOS GOARCH CGO_ENABLED GOWORK GOFLAGS | Set-Content -LiteralPath (Join-Path $output 'build-settings.json')
     if ($LASTEXITCODE -ne 0) { throw 'Build configuration inspection failed' }
     Invoke-Go -Arguments @('list', '-m', '-json', 'all') | Set-Content -LiteralPath (Join-Path $output 'modules.json')
-    if ($Scan) { Invoke-Go -Arguments @('run', 'golang.org/x/vuln/cmd/govulncheck@v1.9.0', './...') }
+    if ($Scan) { Invoke-Go -Arguments @('run', 'golang.org/x/vuln/cmd/govulncheck@v1.10.0', './...') }
     Write-Output "Validated both native examples and source. Evidence: $output"
 }
 finally {

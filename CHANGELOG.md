@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.9.1
+
+- Refresh the official Go dependency graph with x/net v0.63.0, x/tools v0.53.0, go-cmp v0.7.0 and Goldmark v1.8.7. Use govulncheck v1.10.0 for validation. Keep the Go 1.27.4 shipping requirement and verify the separate Go 1.27.3 source boundary (#44).
+
 ## 0.9.0
 
 - Reject case-variant bookmark duplicates before Word can replace a destination; reserve tooltip/imported names ignoring case and remap imported case-alias anchors (#42).

@@ -9,7 +9,7 @@ Reusable Go Word documents with configurable report defaults and atomic publicat
 
 **Module/build requirement: Go 1.27.4.** The canonical `go.mod`, validation scripts
 and CI select this current stable release, checked against the official Go feed
-and release history on 2026-11-17.
+and release history on 2026-11-23.
 
 **Verified source compatibility with the selected dependencies: Go 1.27.3.**
 A complete isolated copy with only its own `go` directive lowered passed full
@@ -22,7 +22,7 @@ versions and checksums matched the shipping tree.
 The adjacent Go 1.27.2 probe was rejected by `go-atomicfile` v0.1.1's unchanged
 Go 1.27.3 requirement before compilation. This sets the selected dependency
 admission boundary; it does not establish an intrinsic Go 1.27.3 language
-requirement. Mingo v0.18.0, including dependencies and tests for Windows/Linux,
+requirement. Mingo v0.19.0, including dependencies and tests for Windows/Linux,
 corroborated the dependency constraint; the code's non-type `new` calls require
 Go 1.26. The shipping module remains declared at Go 1.27.4, so using the lower
 source result requires an independently adjusted manifest. Compatibility with

@@ -2,30 +2,28 @@
 
 ## Current build selection
 
-Refreshed on 2026-11-17 against the official Go feed/history and upstream stable
-tags. The current module and build requirement is Go 1.27.4; validation scripts
-and CI use that version. The standalone vulnerability scanner is v1.9.0.
+Refreshed on 2026-11-23 against the official Go feed, release history and
+upstream stable tags. The module, validation scripts and CI require Go 1.27.4.
+Validation uses the standalone govulncheck v1.10.0.
 
-The direct library releases below remain current: etree v1.8.1, go-ole v1.3.0,
-go-atomicfile v0.1.1, docxgo/v2 v2.16.0 and x/net v0.62.0. Upstream tag review
-found no newer stable major successor for these module paths. Existing licenses
-and the document-engine provenance qualification below remain applicable.
+The direct library releases are etree v1.8.1, go-ole v1.3.0, go-atomicfile
+v0.1.1, docxgo/v2 v2.16.0 and x/net v0.63.0. No newer stable major was found
+for these module paths. The docxgo provenance and minimal-template qualification
+below still apply.
 
-The complete selected upstream graph now uses x/crypto v0.59.0, x/sys v0.50.0,
-x/term v0.48.0, x/text v0.44.0 and x/mod v0.43.0; x/sync v0.25.0 and x/tools
-v0.52.0 enter through their upstream graph. Explicit indirect constraints keep
-otherwise unimported paths current. An ordinary `go mod tidy` removes those
-constraints and restores older versions from x/net's released go.mod; the
-refresh therefore runs tidy first, then deliberately restores current official
-graph constraints through Go module tooling. These pins add no compiled imports
-and do not modify any dependency implementation or manifest.
+The selected graph also uses x/crypto v0.59.0, x/mod v0.43.0, x/sync v0.25.0,
+x/sys v0.50.0, x/term v0.48.0, x/text v0.44.0, x/tools v0.53.0,
+go-cmp v0.7.0 and Goldmark v1.8.7. x/tools imports Goldmark's v1 paths, so
+adding the separately versioned v2 module would leave v1 selected. Telemetry
+has no stable tag. Retain the revision selected by official x/tools v0.53.0,
+v0.0.0-20261116191925-e77a43154acb. Neither library is imported by the
+library packages or tests. Tidy removes graph-only constraints, so restore the
+verified selections through Go module tooling after tidy.
 
-Go 1.27.4 full tests, race tests, vet/stdversion, module verification, example
-builds and v1.9.0 source/binary scans passed on Windows amd64. The synthetic
-Windows integration-tag Word TOC test also passed. The 2026-11-17 configured source/binary scans reported no
-vulnerabilities, including no remaining required-module GO-2026-6859 result.
-This describes the tested configuration, not universal security or reader
-qualification. Dated historical results below retain their original meaning.
+Windows amd64 formatting, tests, race checks, vet/stdversion, module
+verification and example builds passed on Go 1.27.4. Linux amd64 was
+cross-built. The scanner reported no vulnerabilities in the configured
+source and two Windows example binaries.
 
 ## Historical qualification
 

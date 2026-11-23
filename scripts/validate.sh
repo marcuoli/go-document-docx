@@ -31,9 +31,9 @@ for example in report authoring; do
  binary="$output/$example-example"
  go build -trimpath -buildvcs=false -o "$binary" "./examples/$example"
  go version -m "$binary" > "$output/$example-build-metadata.txt"
- if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary "$binary"; fi
+ if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 -mode=binary "$binary"; fi
 done
 go env -json GOVERSION GOOS GOARCH CGO_ENABLED GOWORK GOFLAGS > "$output/build-settings.json"
 go list -m -json all > "$output/modules.json"
-if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...; fi
+if "$scan"; then go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...; fi
 printf 'Validated both native examples and source. Evidence: %s\n' "$output"
