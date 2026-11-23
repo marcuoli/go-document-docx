@@ -395,7 +395,7 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		}
 	}
 	target := cell.LinkTarget
-	tipID := 0
+	tipID, markerID := 0, 0
 	if target == "" && cell.ScreenTip != "" {
 		// Keep the authored bookmark independently addressable. Only the
 		// hidden ScreenTip target identifies this hyperlink as automatic.
@@ -406,6 +406,15 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 		}
 		target = navigation.CellScreenTipBookmark(tipID)
 		if err := writeBookmarkStart(ctx, b, target, tipID); err != nil {
+			return err
+		}
+		markerID, err = bookmarks.next(ctx, true)
+		if err != nil {
+			return err
+		}
+		// The separate coextensive marker establishes ownership. Word users
+		// can create ordinary bookmarks that resemble the target name.
+		if err := writeBookmarkStart(ctx, b, navigation.CellScreenTipMarker(markerID), markerID); err != nil {
 			return err
 		}
 	}
@@ -443,6 +452,11 @@ func writeCellParagraph(ctx context.Context, b *strings.Builder, style string, c
 	}
 	if target != "" {
 		b.WriteString(`</w:hyperlink>`)
+	}
+	if markerID != 0 {
+		if err := writeBookmarkEnd(ctx, b, markerID); err != nil {
+			return err
+		}
 	}
 	if tipID != 0 {
 		if err := writeBookmarkEnd(ctx, b, tipID); err != nil {

@@ -188,7 +188,7 @@ func TestLiteralNavigationGeneratedNamesCannotCollide(t *testing.T) {
 		}
 		folded[key] = true
 	}
-	if len(got.Names) != 5 || len(got.Links) != 3 {
+	if len(got.Names) != 7 || len(got.Links) != 3 {
 		t.Fatalf("unexpected bookmark or hyperlink count: %+v", got)
 	}
 	if got.Text["_docxcelltip2"] != "Reserved caller name" || got.Text["with_tip"] != "named tip" {

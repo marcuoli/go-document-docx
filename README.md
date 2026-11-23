@@ -254,7 +254,7 @@ The examples/word-refresh command accepts separate input/output paths; output pu
 
 Wrap a finalized DOCX source with `word.PDF(source, word.Options{})` and pass that source to `publication.Save(ctx, pdfPath, overwrite, pdf)`. The receipt identifies the committed PDF. Word reads a private staged copy, uses its own layout for all pages, and creates PDF bookmarks from headings. The SDK streams the generated PDF from disk and preserves the input. Refresh any needed TOC fields before supplying the finalized DOCX.
 
-Word PDF export omits automatic literal cell ScreenTip links that target their own generated range. New DOCX files give these links separate hidden anchors, even in cells with a named bookmark. Authored links and bookmark destinations remain available. If an older DOCX attached a ScreenTip to its own authored bookmark, that ambiguous link is retained.
+Word PDF export omits automatic literal cell ScreenTip links that target their own generated range. New DOCX files give these links separate hidden anchors and hidden producer markers, even in cells with an authored bookmark. Authored links and bookmark destinations remain available. Unmarked links in older DOCX files are retained.
 
 This operation uses the same desktop Word requirements, automation lock, and cancellation semantics as field refresh. Set `Options.TemporaryDirectory` to scope both staged files. An export failure or cancellation before commit preserves an existing PDF. Run `go run ./examples/word-pdf output.pdf` on a supported Windows host to render the synthetic example.
 

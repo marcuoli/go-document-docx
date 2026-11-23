@@ -43,20 +43,34 @@ func BookmarkKey(name string) string {
 	return string(folded)
 }
 
-const cellTipBookmarkPrefix = "DocxCellTip"
+const (
+	cellTipBookmarkPrefix = "_DocxCellTip"
+	cellTipMarkerPrefix   = "_DocxCellTipMark"
+)
 
-// CellScreenTipBookmark names an automatic literal cell ScreenTip destination.
-// Word hides underscore-prefixed bookmarks in its default bookmark list.
+// CellScreenTipBookmark names a hidden literal ScreenTip destination.
 func CellScreenTipBookmark(id int) string {
-	return fmt.Sprintf("_%s%d", cellTipBookmarkPrefix, id)
+	return fmt.Sprintf("%s%d", cellTipBookmarkPrefix, id)
 }
 
-// IsCellScreenTipBookmark reports whether a name has the automatic shape
-// used by the literal writer, including its legacy visible prefix. The
-// name alone does not distinguish a ScreenTip from an authored link.
+// CellScreenTipMarker names the hidden producer marker for the same range.
+func CellScreenTipMarker(id int) string {
+	return fmt.Sprintf("%s%d", cellTipMarkerPrefix, id)
+}
+
+// IsCellScreenTipBookmark recognizes a new literal ScreenTip destination name.
+// The destination also needs a coextensive producer marker before PDF export.
 func IsCellScreenTipBookmark(name string) bool {
-	key := strings.TrimPrefix(BookmarkKey(name), "_")
-	suffix, ok := strings.CutPrefix(key, "docxcelltip")
+	return numberedName(name, "_docxcelltip")
+}
+
+// IsCellScreenTipMarker recognizes a literal ScreenTip producer marker name.
+func IsCellScreenTipMarker(name string) bool {
+	return numberedName(name, "_docxcelltipmark")
+}
+
+func numberedName(name, lowerPrefix string) bool {
+	suffix, ok := strings.CutPrefix(BookmarkKey(name), lowerPrefix)
 	if !ok || len(suffix) == 0 || suffix[0] == '0' {
 		return false
 	}

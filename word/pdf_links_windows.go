@@ -109,7 +109,51 @@ func removePDFScreenTipLink(links, bookmarks *ole.IDispatch, i int32) error {
 	if err != nil || !sameRange {
 		return err
 	}
+	marked, err := hasScreenTipMarker(source)
+	if err != nil || !marked {
+		return err
+	}
 	return invoke(link, "Delete")
+}
+
+func hasScreenTipMarker(source *ole.IDispatch) (bool, error) {
+	bookmarks, err := dispatch(source, "Bookmarks", false)
+	if err != nil {
+		return false, err
+	}
+	defer bookmarks.Release()
+	if err := put(bookmarks, "ShowHidden", true); err != nil {
+		return false, err
+	}
+	count, err := wordValue[int32](get(bookmarks, "Count"))
+	if err != nil {
+		return false, err
+	}
+	for i := int32(1); i <= count; i++ {
+		bookmark, err := dispatch(bookmarks, "Item", true, i)
+		if err != nil {
+			return false, err
+		}
+		same, err := isScreenTipMarker(source, bookmark)
+		bookmark.Release()
+		if err != nil || same {
+			return same, err
+		}
+	}
+	return false, nil
+}
+
+func isScreenTipMarker(source, bookmark *ole.IDispatch) (bool, error) {
+	name, err := wordValue[string](get(bookmark, "Name"))
+	if err != nil || !navigation.IsCellScreenTipMarker(name) {
+		return false, err
+	}
+	marker, err := dispatch(bookmark, "Range", false)
+	if err != nil {
+		return false, err
+	}
+	defer marker.Release()
+	return wordValue[bool](oleutil.CallMethod(source, "IsEqual", marker))
 }
 
 func wordValue[T any](value *ole.VARIANT, err error) (result T, returnedErr error) {

@@ -85,7 +85,7 @@ func TestCellScreenTipPreservesAppearanceAndInternalTargets(t *testing.T) {
 			links++
 		}
 	}
-	if links != 4 || len(ids) != 4 || len(anchors) != 4 || len(ends) != 4 {
+	if links != 4 || len(ids) != 8 || len(anchors) != 4 || len(ends) != 8 {
 		t.Fatal("missing/duplicated internal targets", links, ids, ends, anchors)
 	}
 	for id := range ids {

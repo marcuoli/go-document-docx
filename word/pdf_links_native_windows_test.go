@@ -3,16 +3,20 @@
 package word
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	ole "github.com/go-ole/go-ole"
 	"github.com/go-ole/go-ole/oleutil"
 	"github.com/marcuoli/go-document-docx/document"
+	"github.com/marcuoli/go-document-docx/internal/opc"
 	"github.com/marcuoli/go-document-docx/publication"
 	"github.com/marcuoli/go-document-docx/report"
+	"github.com/marcuoli/go-document-docx/template"
 )
 
 func TestNativeWordPDFRemovesOnlyAutomaticScreenTipLinks(t *testing.T) {
@@ -30,18 +34,19 @@ func TestNativeWordPDFRemovesOnlyAutomaticScreenTipLinks(t *testing.T) {
 	doc.AddTable(document.Table{Headers: []string{"Links"}, Widths: []int{5000}, Rows: [][]document.Cell{
 		{{Text: "Automatic tip", ScreenTip: "Expected automatic tip"}},
 		{{Text: "Named tip", Bookmark: "named_tip", ScreenTip: "Named user bookmark"}},
-		{{Text: "Explicit self", Bookmark: explicitHidden, LinkTarget: explicitHidden, ScreenTip: "Styled authored self"}},
-		{{Text: "Legacy name", Bookmark: explicitLegacy, LinkTarget: explicitLegacy}},
+		{{Text: "Explicit self", Bookmark: explicitHidden, LinkTarget: explicitHidden, ScreenTip: "Authored self with ordinary typography"}},
+		{{Text: "Legacy name", Bookmark: explicitLegacy, LinkTarget: explicitLegacy, ScreenTip: "Legacy-looking authored self"}},
 		{{Text: "Heading jump", LinkTarget: "actual_heading", ScreenTip: "Jump to the heading"}},
 		{{Text: "Other jump", LinkTarget: explicitHidden, ScreenTip: "Jump to the authored link"}},
 		{{Text: "Named anchor jump", LinkTarget: "named_tip"}},
 	}})
+	base := unstyleAuthoredScreenTipLinks(t, doc, explicitHidden, explicitLegacy)
 	dir := t.TempDir()
 	for _, refresh := range []bool{false, true} {
-		var source publication.Source = doc
+		source := base
 		path := filepath.Join(dir, "raw.docx")
 		if refresh {
-			source = WithUpdatedFields(doc, Options{TemporaryDirectory: dir})
+			source = WithUpdatedFields(base, Options{TemporaryDirectory: dir})
 			path = filepath.Join(dir, "refreshed.docx")
 		}
 		if _, err := publication.Save(t.Context(), path, false, source); err != nil {
@@ -145,5 +150,103 @@ func TestNativeWordPDFRemovesOnlyAutomaticScreenTipLinks(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func unstyleAuthoredScreenTipLinks(t *testing.T, doc *document.Document, bookmarks ...string) publication.Source {
+	t.Helper()
+	var b bytes.Buffer
+	if err := doc.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	p, err := opc.Read(t.Context(), b.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+	const main = "word/document.xml"
+	x, err := p.XML(main)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, link := range opc.Elements(x.Root(), opc.Word, "hyperlink") {
+		if slices.Contains(bookmarks, opc.Attr(link, opc.Word, "anchor")) {
+			for _, underline := range opc.Elements(link, opc.Word, "u") {
+				underline.Parent().RemoveChild(underline)
+			}
+		}
+	}
+	if err := p.SetXML(main, x); err != nil {
+		t.Fatal(err)
+	}
+	b.Reset()
+	if err := p.Write(t.Context(), &b); err != nil {
+		t.Fatal(err)
+	}
+	return publication.FromBytes(b.Bytes())
+}
+
+func TestNativeWordPDFUnlinksMarkedTipsAfterComposition(t *testing.T) {
+	if os.Getenv("DOCX_WORD_INTEGRATION") != "1" {
+		t.Skip("explicit desktop Word integration opt-in required")
+	}
+	page := func(label string) []byte {
+		t.Helper()
+		doc, err := document.New(report.Defaults())
+		if err != nil {
+			t.Fatal(err)
+		}
+		doc.Heading(label, 1)
+		doc.AddTable(document.Table{Headers: []string{"Value"}, Widths: []int{5000},
+			Rows: [][]document.Cell{{{Text: label + " cell", ScreenTip: label + " tip"}}}})
+		var out bytes.Buffer
+		if err := doc.Write(t.Context(), &out); err != nil {
+			t.Fatal(err)
+		}
+		return out.Bytes()
+	}
+	// Both sources start their independent automatic bookmark counters at one.
+	doc, err := template.Compose(t.Context(), page("First"), page("Second"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "composed.docx")
+	source := WithUpdatedFields(publication.FromBytes(doc), Options{TemporaryDirectory: dir})
+	if _, err := publication.Save(t.Context(), path, false, source); err != nil {
+		t.Fatal(err)
+	}
+	err = withDocument(t.Context(), path, true, func(doc *ole.IDispatch) error {
+		bookmarks, err := dispatch(doc, "Bookmarks", false)
+		if err != nil {
+			return err
+		}
+		defer bookmarks.Release()
+		if err := put(bookmarks, "ShowHidden", false); err != nil {
+			return err
+		}
+		visible, err := wordValue[int32](get(bookmarks, "Count"))
+		if err != nil || visible != 0 {
+			t.Fatal("composition made a generated bookmark visible", visible, err)
+		}
+		links, err := dispatch(doc, "Hyperlinks", false)
+		if err != nil {
+			return err
+		}
+		defer links.Release()
+		n, err := wordValue[int32](get(links, "Count"))
+		if err != nil || n != 2 {
+			t.Fatal("composed ScreenTips did not survive Word refresh", n, err)
+		}
+		if err := removePDFScreenTipLinks(t.Context(), doc); err != nil {
+			return err
+		}
+		n, err = wordValue[int32](get(links, "Count"))
+		if err != nil || n != 0 {
+			t.Fatal("composed ScreenTips were not recognized for removal", n, err)
+		}
+		return nil
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
 }

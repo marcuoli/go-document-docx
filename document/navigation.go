@@ -106,7 +106,8 @@ func (s *bookmarkState) next(ctx context.Context, selfLink bool) (int, error) {
 			return 0, err
 		}
 		s.id++
-		if !selfLink || s.reserved[navigation.BookmarkKey(navigation.CellScreenTipBookmark(s.id))] == "" {
+		if !selfLink || s.reserved[navigation.BookmarkKey(navigation.CellScreenTipBookmark(s.id))] == "" &&
+			s.reserved[navigation.BookmarkKey(navigation.CellScreenTipMarker(s.id))] == "" {
 			return s.id, nil
 		}
 	}

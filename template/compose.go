@@ -146,7 +146,9 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 		maxID++
 		bookmarkIDs[oldID] = strconv.Itoa(maxID)
 		name := oldName
-		if names[navigation.BookmarkKey(name)] {
+		tipBookmark := navigation.IsCellScreenTipBookmark(name)
+		tipMarker := navigation.IsCellScreenTipMarker(name)
+		if names[navigation.BookmarkKey(name)] && !tipBookmark && !tipMarker {
 			name = prefix + oldName
 		}
 		// Caller names may already occupy both the prefixed spelling and
@@ -157,7 +159,14 @@ func ComposeWithOptions(ctx context.Context, main, closing []byte, options Compo
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
-			name = fmt.Sprintf("%sbookmark_%d", prefix, fallbackID)
+			switch {
+			case tipBookmark:
+				name = navigation.CellScreenTipBookmark(fallbackID)
+			case tipMarker:
+				name = navigation.CellScreenTipMarker(fallbackID)
+			default:
+				name = fmt.Sprintf("%sbookmark_%d", prefix, fallbackID)
+			}
 			fallbackID++
 		}
 		names[navigation.BookmarkKey(name)] = true
