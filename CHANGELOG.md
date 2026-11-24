@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.0
+
 - Hide automatic literal cell ScreenTip bookmarks in Word and omit their self-links from Word PDF export (#48).
 
 - Export finalized DOCX sources as PDF with desktop Word, preserving headings as PDF bookmarks and using atomic publication (#48).
