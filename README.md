@@ -142,6 +142,10 @@ doc, err := document.New(options)
 
 Set `options.TableStyle = nil` to retain the literal renderer's historical appearance. `document.TableStyle` uses RGB colors and twip padding/spacing; its zero padding/spacing values are explicit. It preserves natural wrapping and adds no text-fitting or fixed-height policy. The runnable `examples/report` consumer demonstrates configurable headers and independent cell hints. See the API documentation for accepted alignment and size bounds.
 
+## Grouped table headers
+
+Set `Table.Widths` for the underlying columns. Use `Table.HeaderRows` for formatted leading rows that repeat together in Word. `Cell.ColSpan` covers adjacent columns in a header or body row. Each row must use the full grid, with one cell for each spanned group. For a single plain header row, use `Table.Headers`. The [grouped comparison example](examples/grouped-table/main.go) shows two labels spanning their subcolumns and a row with one merged value per group.
+
 ## Cell ScreenTips
 
 Set `Cell.ScreenTip` to caller-authored hover text for a literal cell paragraph.

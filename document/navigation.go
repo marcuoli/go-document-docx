@@ -58,7 +58,7 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]string, erro
 		if item.table == nil {
 			continue
 		}
-		for _, row := range item.table.Rows {
+		for row := range item.table.cellRows {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
@@ -75,7 +75,7 @@ func (d *Document) navigationNames(ctx context.Context) (map[string]string, erro
 		if item.table == nil {
 			continue
 		}
-		for _, row := range item.table.Rows {
+		for row := range item.table.cellRows {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}

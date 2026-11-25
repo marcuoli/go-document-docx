@@ -148,38 +148,54 @@ func (d *Document) validate(ctx context.Context) error {
 		if t.FontSize != 0 && (t.FontSize < 12 || t.FontSize > 144) {
 			return fmt.Errorf("table font size must be zero or 12 to 144 half points")
 		}
-		if len(t.Headers) == 0 || len(t.Headers) > 32 || len(t.Widths) != len(t.Headers) {
+
+		grid := len(t.Widths)
+		if grid == 0 || grid > 32 {
+			return fmt.Errorf("table must have 1 to 32 grid columns")
+		}
+		if (len(t.Headers) == 0) == (len(t.HeaderRows) == 0) {
+			return fmt.Errorf("table requires either Headers or HeaderRows")
+		}
+		if len(t.Headers) != 0 && len(t.Headers) != grid {
 			return fmt.Errorf("table headers and widths must match")
 		}
 		width := 0
-		for i, w := range t.Widths {
+		for _, w := range t.Widths {
 			if w <= 0 || w > d.options.PageWidth {
 				return fmt.Errorf("invalid column width")
 			}
 			width += w
-			if err := check(t.Headers[i]); err != nil {
-				return err
-			}
 		}
 		if width > d.options.PageWidth-2*d.options.Margin {
 			return fmt.Errorf("table exceeds available page width")
+		}
+		for _, header := range t.Headers {
+			if err := check(header); err != nil {
+				return err
+			}
 		}
 		cells += len(t.Headers)
 		if cells > 1_000_000 {
 			return fmt.Errorf("document exceeds one million cells")
 		}
-		for _, row := range t.Rows {
+		for row := range t.cellRows {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
-			if len(row) != len(t.Headers) {
-				return fmt.Errorf("table row does not match headers")
+			if len(row) > grid {
+				return fmt.Errorf("table row has more cells than grid columns")
 			}
 			cells += len(row)
 			if cells > 1_000_000 {
 				return fmt.Errorf("document exceeds one million cells")
 			}
+			column := 0
 			for _, c := range row {
+				span := max(1, c.ColSpan)
+				if c.ColSpan < 0 || span > grid-column {
+					return fmt.Errorf("cell span exceeds the remaining table grid")
+				}
+				column += span
 				if c.Tone != Plain && c.Tone != Difference && c.Tone != Unavailable {
 					return fmt.Errorf("unsupported cell tone")
 				}
@@ -216,6 +232,9 @@ func (d *Document) validate(ctx context.Context) error {
 						return err
 					}
 				}
+			}
+			if column != grid {
+				return fmt.Errorf("table row does not cover the grid")
 			}
 		}
 	}
@@ -562,6 +581,9 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 	}
 	b.WriteString(`</w:tblGrid>`)
 	row := func(cells []Cell, header bool, index int) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		b.WriteString(`<w:tr><w:trPr>`)
 		if code && !header {
 			// Unlike a short data row, source code can be many pages long.
@@ -574,7 +596,14 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			b.WriteString(`<w:tblHeader/>`)
 		}
 		b.WriteString(`</w:trPr>`)
-		for i, c := range cells {
+		column := 0
+		for _, c := range cells {
+			span := max(1, c.ColSpan)
+			cellWidth := 0
+			for _, w := range t.Widths[column : column+span] {
+				cellWidth += w
+			}
+			column += span
 			fill := appearance.BodyFill
 			if index%2 == 1 {
 				fill = appearance.AlternateFill
@@ -588,7 +617,13 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			if c.Tone == Unavailable {
 				fill = "EDEBE8"
 			}
-			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/><w:shd w:val="clear" w:fill="%s"/><w:vAlign w:val="%s"/></w:tcPr>`, t.Widths[i], fill, appearance.VerticalAlignment)
+
+			// gridSpan follows tcW and precedes shading in Word's cell properties.
+			fmt.Fprintf(b, `<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/>`, cellWidth)
+			if span > 1 {
+				fmt.Fprintf(b, `<w:gridSpan w:val="%d"/>`, span)
+			}
+			fmt.Fprintf(b, `<w:shd w:val="clear" w:fill="%s"/><w:vAlign w:val="%s"/></w:tcPr>`, fill, appearance.VerticalAlignment)
 			style := "TableText"
 			if header {
 				style = "TableHeader"
@@ -601,7 +636,7 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 				}
 				color = "FFFFFF"
 			}
-			if header {
+			if header && (code || color == "") {
 				color = appearance.HeaderTextColor
 			}
 			if err := writeCellParagraph(ctx, b, style, c, color, t.FontSize, bookmarks); err != nil {
@@ -610,24 +645,29 @@ func writeTable(ctx context.Context, b *strings.Builder, t Table, options Option
 			b.WriteString(`</w:tc>`)
 		}
 		b.WriteString(`</w:tr>`)
-		return nil
-	}
-	head := make([]Cell, len(t.Headers))
-	for i, h := range t.Headers {
-		head[i] = Cell{Text: h}
-	}
-	if err := row(head, true, 0); err != nil {
-		return err
-	}
-	for i, r := range t.Rows {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if err := row(r, false, i); err != nil {
-			return err
-		}
 		if b.Len() > 128<<20 {
 			return fmt.Errorf("document XML exceeds 128 MiB")
+		}
+		return nil
+	}
+
+	if len(t.Headers) != 0 {
+		head := make([]Cell, len(t.Headers))
+		for i, h := range t.Headers {
+			head[i] = Cell{Text: h}
+		}
+		if err := row(head, true, 0); err != nil {
+			return err
+		}
+	}
+	for _, header := range t.HeaderRows {
+		if err := row(header, true, 0); err != nil {
+			return err
+		}
+	}
+	for i, r := range t.Rows {
+		if err := row(r, false, i); err != nil {
+			return err
 		}
 	}
 	b.WriteString(`</w:tbl>`)

@@ -66,20 +66,43 @@ type Cell struct {
 	// Write validates UTF-8/XML and counts it in the document text/XML limits.
 	// Display and interaction depend on the reader; no visible text is added.
 	ScreenTip string
+	// ColSpan covers consecutive horizontal grid columns. Zero and one cover
+	// one column. Write rejects negative spans and rows that do not cover the grid.
+	ColSpan int
 }
 
-// Table contains a repeating header and explicit column widths in twips.
-// Widths must be positive, match Headers, and fit the page's available width.
-// Tables may span pages. Rows stay together when they fit on a page; a row taller
-// than a page can still split. The renderer never silently drops values.
+// Table contains repeating leading headers and a fixed grid of columns.
+// Every row covers the grid exactly, including any horizontal spans.
+// Rows stay together when they fit on a page. Rows taller than a page can split.
 type Table struct {
 	// FontSize optionally overrides header and body runs in half-points (12..144).
-	// Zero inherits Options.TableSize through the paragraph styles. It changes
-	// only this table's typography; text, colors and alignment remain literal.
+	// Zero inherits Options.TableSize through the paragraph styles.
 	FontSize int
-	Headers  []string
-	Widths   []int
-	Rows     [][]Cell
+	// Headers supplies the single plain-text header row. Use either Headers
+	// or HeaderRows. Each string occupies one grid column.
+	Headers []string
+	// Widths sets the positive widths of 1 to 32 grid columns in twips.
+	// The sum must fit the page's available width.
+	Widths []int
+	// Rows supplies the body rows. A spanned cell consumes consecutive grid
+	// columns without placeholder cells.
+	Rows [][]Cell
+	// HeaderRows supplies leading formatted rows that Word repeats together.
+	// Each row covers the same grid as Rows. Leave Headers empty when this
+	// field is set. AddTable copies all rows, cells and runs.
+	HeaderRows [][]Cell
+}
+
+// cellRows visits formatted headers and body rows without copying either.
+// Legacy string headers cannot carry cell properties.
+func (t Table) cellRows(yield func([]Cell) bool) {
+	for _, rows := range [2][][]Cell{t.HeaderRows, t.Rows} {
+		for _, row := range rows {
+			if !yield(row) {
+				return
+			}
+		}
+	}
 }
 
 type block struct {
@@ -184,12 +207,19 @@ func (d *Document) AddTable(table Table) {
 	owned := table
 	owned.Headers = slices.Clone(table.Headers)
 	owned.Widths = slices.Clone(table.Widths)
-	owned.Rows = make([][]Cell, len(table.Rows))
-	for i, row := range table.Rows {
-		owned.Rows[i] = slices.Clone(row)
-		for j := range owned.Rows[i] {
-			owned.Rows[i][j].Runs = slices.Clone(row[j].Runs)
+
+	owned.HeaderRows = cloneCellRows(table.HeaderRows)
+	owned.Rows = cloneCellRows(table.Rows)
+	d.blocks = append(d.blocks, block{table: &owned})
+}
+
+func cloneCellRows(rows [][]Cell) [][]Cell {
+	owned := slices.Clone(rows)
+	for i, row := range rows {
+		owned[i] = slices.Clone(row)
+		for j := range row {
+			owned[i][j].Runs = slices.Clone(row[j].Runs)
 		}
 	}
-	d.blocks = append(d.blocks, block{table: &owned})
+	return owned
 }

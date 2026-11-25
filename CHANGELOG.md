@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add horizontal spans and structured repeating header rows to literal Word tables (#50).
+
 ## 0.11.0
 
 - Hide automatic literal cell ScreenTip bookmarks in Word and omit their self-links from Word PDF export (#48).
