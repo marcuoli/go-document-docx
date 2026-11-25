@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.0
+
 - Add horizontal spans and structured repeating header rows to literal Word tables (#50).
 
 ## 0.11.0
