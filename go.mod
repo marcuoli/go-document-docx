@@ -2,18 +2,20 @@ module github.com/marcuoli/go-document-docx
 
 go 1.27.4
 
+// Keep the complete upstream module graph current, including unimported paths.
+// Tidy removes graph-only constraints retained for the selected upstream releases.
 require (
 	github.com/beevik/etree v1.8.1
 	github.com/go-ole/go-ole v1.3.0
 	github.com/marcuoli/go-atomicfile v0.1.1
 	github.com/mmonterroca/docxgo/v2 v2.16.0
+	github.com/xo/okage v0.1.0
 	golang.org/x/image v0.48.0
 	golang.org/x/net v0.63.0
 )
 
-// Keep the complete upstream module graph current, including unimported paths.
-// Tidy removes graph-only constraints retained for the selected upstream releases.
 require (
+	github.com/go-text/typesetting v0.3.5 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/yuin/goldmark v1.8.7 // indirect
 	golang.org/x/crypto v0.59.0 // indirect

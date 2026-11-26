@@ -14,7 +14,7 @@ import (
 
 func main() {
 	input := flag.String("input", "", "existing DOCX with a table")
-	image := flag.String("logo", "", "PNG or JPEG artwork file")
+	image := flag.String("logo", "", "PNG, JPEG, GIF, BMP, TIFF, WebP or SVG artwork file")
 	output := flag.String("output", "", "new DOCX file")
 	removeWhite := flag.Bool("remove-white-background", false, "remove a near-white background along the logo edges")
 	flag.Parse()

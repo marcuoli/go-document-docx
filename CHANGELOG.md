@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.15.0
 
-- Add an opt-in to remove edge-connected white backgrounds from opaque PNG and JPEG logos while preserving enclosed white artwork and existing transparency (#56).
+- Decode PNG, JPEG, GIF, BMP, TIFF, WebP and self-contained SVG artwork through the shared logo reader (#57).
+
+- Add an opt-in to remove edge-connected white backgrounds from opaque logos while preserving enclosed white artwork and existing transparency (#56).
 
 ## 0.14.0
 

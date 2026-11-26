@@ -6,7 +6,7 @@ import (
 )
 
 func removeWhiteLogoBackground(pic image.Image) image.Image {
-	// Supported PNG and JPEG decoder types can report whether any pixel already
+	// Supported decoder types can report whether any pixel already
 	// has alpha. Keep that artist-supplied mask, including white artwork at an edge.
 	opacity, ok := pic.(interface{ Opaque() bool })
 	if !ok || !opacity.Opaque() {

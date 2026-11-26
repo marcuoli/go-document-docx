@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	_ "image/jpeg"
 	"image/png"
 	"io"
 
@@ -22,7 +21,7 @@ const (
 	logoRasterSide    = 640
 )
 
-var errLogo = errors.New("logo requires a readable PNG or JPEG up to 8 MiB and 4096 pixels per side")
+var errLogo = errors.New("logo requires a readable PNG, JPEG, GIF, BMP, TIFF, WebP or self-contained SVG up to 8 MiB, with raster dimensions up to 4096 pixels per side")
 
 // Logo is an immutable, normalized image for document artwork. A zero Logo
 // leaves the supplied document or upper artwork unmodified.
@@ -39,14 +38,16 @@ type LogoOptions struct {
 	RemoveWhiteBackground bool
 }
 
-// ReadLogo reads a bounded PNG or JPEG without removing its background. It
-// re-encodes the image as PNG and removes source metadata. Large logos are
-// downsampled when both dimensions remain representable. It never closes the reader.
+// ReadLogo prepares a bounded PNG, JPEG, GIF, BMP, TIFF, WebP or static SVG
+// from an existing reader. It preserves the supplied background and alpha,
+// uses the first GIF frame and normalizes to PNG without source metadata.
+// SVG supports self-contained shapes, outline paths and gradients. ReadLogo
+// never closes the reader.
 func ReadLogo(r io.Reader) (Logo, error) {
 	return ReadLogoWithOptions(r, LogoOptions{})
 }
 
-// ReadLogoWithOptions prepares a bounded PNG or JPEG using options before
+// ReadLogoWithOptions prepares a logo using the supplied options before
 // resampling. It follows ReadLogo's limits and never closes the reader.
 func ReadLogoWithOptions(r io.Reader, options LogoOptions) (Logo, error) {
 	if r == nil {
@@ -79,19 +80,6 @@ func ReadLogoWithOptions(r io.Reader, options LogoOptions) (Logo, error) {
 		return Logo{}, err
 	}
 	return Logo{png: data, width: width, height: height}, nil
-}
-
-func decodeLogo(data []byte, requirePNG bool) (image.Image, error) {
-	config, kind, err := image.DecodeConfig(bytes.NewReader(data))
-	if err != nil || (kind != "png" && (requirePNG || kind != "jpeg")) || config.Width < 1 ||
-		config.Height < 1 || config.Width > maxLogoInputSide || config.Height > maxLogoInputSide {
-		return nil, errLogo
-	}
-	decoded, _, err := image.Decode(bytes.NewReader(data))
-	if err != nil {
-		return nil, errLogo
-	}
-	return decoded, nil
 }
 
 func fitLogo(width, height, side int) (int, int) {
