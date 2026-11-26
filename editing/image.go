@@ -50,6 +50,11 @@ func AddImage(paragraph domain.Paragraph, data []byte, width, height int) error 
 	case "gif":
 		format = domain.ImageFormatGIF
 	}
-	_, err = paragraph.AddImageFromBytesWithSize(bytes.Clone(data), format, domain.NewImageSizeInches(float64(width)/1440, float64(height)/1440))
+	size := domain.NewImageSizeInches(float64(width)/1440, float64(height)/1440)
+	// A positive extent below one pixel must remain explicit. The upstream
+	// image API treats a zero pixel dimension as a request for auto-sizing.
+	size.WidthPx = max(1, size.WidthPx)
+	size.HeightPx = max(1, size.HeightPx)
+	_, err = paragraph.AddImageFromBytesWithSize(bytes.Clone(data), format, size)
 	return err
 }

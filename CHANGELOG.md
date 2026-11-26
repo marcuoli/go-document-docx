@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prepare reusable PNG and JPEG logos and place them inside bounded DOCX or PNG artwork layouts (#52).
+
 ## 0.12.0
 
 - Add horizontal spans and structured repeating header rows to literal Word tables (#50).
