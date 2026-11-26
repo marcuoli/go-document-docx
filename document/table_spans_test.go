@@ -19,7 +19,7 @@ func TestGroupedTableGridAndHeaderOwnership(t *testing.T) {
 			{{Text: "Property"}, {Text: "Zone"}, {Text: "Time"}, {Text: "Zone"}, {Text: "Time"}, {Text: "Result"}},
 		},
 		Rows: [][]document.Cell{
-			{{Text: "DBTIMEZONE"}, {Text: "+00:00", ColSpan: 2, LinkTarget: "database_a"}, {Text: "+00:00", ColSpan: 2}, {Text: "✓"}},
+			{{Text: "Time zone"}, {Text: "+00:00", ColSpan: 2, LinkTarget: "database_a"}, {Text: "+00:00", ColSpan: 2}, {Text: "✓"}},
 		},
 	}
 	d.AddTable(table)

@@ -59,7 +59,7 @@ receipt, err := publication.Save(ctx, path, false, doc)
 
 Extended packages cover styled paragraphs/headings/code, lists, captions, bookmarks/links, contents fields, tables and transformations, HTML import, images, literal templates, closing-page composition, caller-supplied fonts and saved-file receipts. The official document engine is opt-in; the basic report example retains its small import graph.
 
-The default preset uses A4, 0.75-inch margins, Oracle Sans references, 9.5-point body text, 11/10-point headings and 8-point tables. Fonts are referenced without distributing them. Caller options/templates can change geometry, families, sizes, header/footer text and labels. Extended distances use twips and font sizes use half-points.
+The default preset uses A4, 0.75-inch margins, references to Arial, 9.5-point body text, 11/10-point headings and 8-point tables. Fonts are referenced without distributing them. Caller options/templates can change geometry, families, sizes, header/footer text and labels. Extended distances use twips and font sizes use half-points.
 
 Runnable examples require explicit output paths:
 - `go run ./examples/report <output.docx>` uses the small report API.

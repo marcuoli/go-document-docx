@@ -35,11 +35,11 @@ func generate(path string) error {
 	d.AddTable(document.Table{
 		Widths: []int{2050, 1500, 1500, 1500, 1500, 950},
 		HeaderRows: [][]document.Cell{
-			{{}, {Text: "DB_PRIMARY", ColSpan: 2, Alignment: "center"}, {Text: "DB_STANDBY", ColSpan: 2, Alignment: "center"}, {}},
-			{{Text: "PROPERTY"}, {Text: "DBTIMEZONE"}, {Text: "TIME"}, {Text: "DBTIMEZONE"}, {Text: "TIME"}, {Text: "Result"}},
+			{{}, {Text: "Source", ColSpan: 2, Alignment: "center"}, {Text: "Target", ColSpan: 2, Alignment: "center"}, {}},
+			{{Text: "Property"}, {Text: "Time zone"}, {Text: "Clock"}, {Text: "Time zone"}, {Text: "Clock"}, {Text: "Result"}},
 		},
 		Rows: [][]document.Cell{
-			{{Text: "DBTIMEZONE"}, {Text: "+00:00", ColSpan: 2}, {Text: "+00:00", ColSpan: 2}, {Text: "✓", TextColor: "008000"}},
+			{{Text: "Time zone"}, {Text: "+00:00", ColSpan: 2}, {Text: "+00:00", ColSpan: 2}, {Text: "✓", TextColor: "008000"}},
 			{{Text: "SESSION CLOCK"}, {Text: "+00:00"}, {Text: "13:00:00"}, {Text: "+00:00"}, {Text: "13:00:00"}, {Text: "✓", TextColor: "008000"}},
 		},
 	})

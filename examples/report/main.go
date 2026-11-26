@@ -29,7 +29,7 @@ func main() {
 	d.HeadingOnNewPage("Executive summary", 1)
 	d.Paragraph("One configuration difference requires investigation. No operational acceptance is implied.")
 	d.Heading("Environment comparison", 1)
-	d.AddTable(document.Table{Headers: []string{"Property", "Source", "Target"}, Widths: []int{3500, 3000, 3246}, Rows: [][]document.Cell{{{Text: "Character set"}, {Text: "AL32UTF8"}, {Text: "AL32UTF8"}}, {{Text: "Rows"}, {Text: "9007199254740993"}, {Text: "9007199254740994", Tone: document.Difference}}}})
+	d.AddTable(document.Table{Headers: []string{"Property", "Source", "Target"}, Widths: []int{3500, 3000, 3246}, Rows: [][]document.Cell{{{Text: "Character set"}, {Text: "UTF-8"}, {Text: "UTF-8"}}, {{Text: "Rows"}, {Text: "9007199254740993"}, {Text: "9007199254740994", Tone: document.Difference}}}})
 	d.Heading("Cell presentation", 2)
 	d.ParagraphWithNext("Literal cell formatting remains separate from evidence interpretation.")
 	// Half-point size is local to this table; the earlier table keeps its preset.

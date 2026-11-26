@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Use Arial for the report preset and vendor-neutral values in examples and tests (#62). Consumers can set their own font families in the document options.
+
 ## 0.16.0
 
 - Export the prepared logo PNG and original pixel dimensions for use by other renderers (#60).
