@@ -34,10 +34,12 @@ func refreshFile(ctx context.Context, path string) error {
 	}, nil)
 }
 
-func exportPDFFile(ctx context.Context, input, output string) error {
+func exportPDFFile(ctx context.Context, input, output string, removeScreenTips bool) error {
 	return withDocument(ctx, input, true, func(doc *ole.IDispatch) error {
-		if err := removePDFScreenTipLinks(ctx, doc); err != nil {
-			return fmt.Errorf("suppress PDF ScreenTip links: %w", err)
+		if removeScreenTips {
+			if err := removePDFScreenTipLinks(ctx, doc); err != nil {
+				return fmt.Errorf("suppress PDF ScreenTip links: %w", err)
+			}
 		}
 		if err := ctx.Err(); err != nil {
 			return err

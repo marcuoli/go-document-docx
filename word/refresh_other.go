@@ -14,7 +14,7 @@ func refreshFile(ctx context.Context, _ string) error {
 	return ErrUnavailable
 }
 
-func exportPDFFile(ctx context.Context, _, _ string) error {
+func exportPDFFile(ctx context.Context, _, _ string, _ bool) error {
 	return refreshFile(ctx, "")
 }
 

@@ -27,7 +27,20 @@ import (
 // cannot be interrupted. The temporary directory must have room for the staged
 // DOCX and PDF.
 func PDF(source publication.Source, options Options) publication.Source {
-	return pdfSource{source: source, options: options, export: exportPDFFile}
+	return pdfSource{source: source, options: options, export: func(ctx context.Context, input, output string) error {
+		return exportPDFFile(ctx, input, output, true)
+	}}
+}
+
+// PDFPreservingLinks exports a staged DOCX using Word's native link handling.
+// Use it when the caller has prepared the PDF link targets before export or
+// needs the generated cell links in the intermediate PDF. Word may omit or
+// reinterpret link metadata, including ScreenTip text. Staging, ownership,
+// cancellation and platform requirements match PDF.
+func PDFPreservingLinks(source publication.Source, options Options) publication.Source {
+	return pdfSource{source: source, options: options, export: func(ctx context.Context, input, output string) error {
+		return exportPDFFile(ctx, input, output, false)
+	}}
 }
 
 type pdfSource struct {

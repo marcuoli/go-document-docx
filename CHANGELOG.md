@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.14.0
+
+- Expose native Word PDF export that preserves links for callers preparing their own PDF navigation or annotations (#54).
+
 ## 0.13.0
 
 - Prepare reusable PNG and JPEG logos and place them inside bounded DOCX or PNG artwork layouts (#52).

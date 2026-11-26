@@ -9,12 +9,38 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/marcuoli/go-document-docx/document"
 	"github.com/marcuoli/go-document-docx/publication"
 	"github.com/marcuoli/go-document-docx/report"
 )
+
+func TestNativeWordPDFPreservingLinks(t *testing.T) {
+	if os.Getenv("DOCX_WORD_INTEGRATION") != "1" {
+		t.Skip("explicit desktop Word integration opt-in required")
+	}
+	doc, err := document.New(report.Defaults())
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc.AddTable(document.Table{Headers: []string{"Result"}, Widths: []int{4000}, Rows: [][]document.Cell{
+		{{Text: "Review", ScreenTip: "Automated status explanation"}},
+	}})
+	options := Options{TemporaryDirectory: t.TempDir()}
+	var ordinary, preserved bytes.Buffer
+	if err := PDF(doc, options).Write(t.Context(), &ordinary); err != nil {
+		t.Fatal(err)
+	}
+	if err := PDFPreservingLinks(doc, options).Write(t.Context(), &preserved); err != nil {
+		t.Fatal(err)
+	}
+	link := regexp.MustCompile(`/Subtype\s*/Link\b`)
+	if link.Match(ordinary.Bytes()) || !link.Match(preserved.Bytes()) {
+		t.Fatal("ordinary Word export must strip generated links and preserving export must keep them")
+	}
+}
 
 func TestNativeWordExportsPDF(t *testing.T) {
 	if os.Getenv("DOCX_WORD_INTEGRATION") != "1" {
