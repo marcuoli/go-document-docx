@@ -16,6 +16,7 @@ func main() {
 	input := flag.String("input", "", "existing DOCX with a table")
 	image := flag.String("logo", "", "PNG or JPEG artwork file")
 	output := flag.String("output", "", "new DOCX file")
+	removeWhite := flag.Bool("remove-white-background", false, "remove a near-white background along the logo edges")
 	flag.Parse()
 	if *input == "" || *image == "" || *output == "" {
 		flag.Usage()
@@ -25,7 +26,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	logo, err := editing.ReadLogo(file)
+	logo, err := editing.ReadLogoWithOptions(file, editing.LogoOptions{RemoveWhiteBackground: *removeWhite})
 	closeErr := file.Close()
 	if err != nil {
 		log.Fatal(err)

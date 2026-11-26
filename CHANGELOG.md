@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add an opt-in to remove edge-connected white backgrounds from opaque PNG and JPEG logos while preserving enclosed white artwork and existing transparency (#56).
+
 ## 0.14.0
 
 - Expose native Word PDF export that preserves links for callers preparing their own PDF navigation or annotations (#54).

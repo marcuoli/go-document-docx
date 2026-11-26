@@ -31,10 +31,24 @@ type Logo struct {
 	width, height int
 }
 
-// ReadLogo reads a bounded PNG or JPEG from an existing reader. It re-encodes
-// the image as PNG and removes source metadata. Large logos are downsampled
-// when both dimensions remain representable. It never closes the reader.
+// LogoOptions controls optional transformations during logo preparation.
+// Its zero value preserves the supplied background.
+type LogoOptions struct {
+	// RemoveWhiteBackground clears near-white pixels connected to an image edge.
+	// Existing alpha, enclosed white areas and entirely white images are preserved.
+	RemoveWhiteBackground bool
+}
+
+// ReadLogo reads a bounded PNG or JPEG without removing its background. It
+// re-encodes the image as PNG and removes source metadata. Large logos are
+// downsampled when both dimensions remain representable. It never closes the reader.
 func ReadLogo(r io.Reader) (Logo, error) {
+	return ReadLogoWithOptions(r, LogoOptions{})
+}
+
+// ReadLogoWithOptions prepares a bounded PNG or JPEG using options before
+// resampling. It follows ReadLogo's limits and never closes the reader.
+func ReadLogoWithOptions(r io.Reader, options LogoOptions) (Logo, error) {
 	if r == nil {
 		return Logo{}, errLogo
 	}
@@ -45,6 +59,9 @@ func ReadLogo(r io.Reader) (Logo, error) {
 	asset, err := decodeLogo(data, false)
 	if err != nil {
 		return Logo{}, err
+	}
+	if options.RemoveWhiteBackground {
+		asset = removeWhiteLogoBackground(asset)
 	}
 	width, height := asset.Bounds().Dx(), asset.Bounds().Dy()
 	if max(width, height) > logoRasterSide {
