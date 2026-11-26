@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.13.0
 
 - Prepare reusable PNG and JPEG logos and place them inside bounded DOCX or PNG artwork layouts (#52).
 
