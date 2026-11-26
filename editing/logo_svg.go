@@ -60,15 +60,14 @@ func decodeSVGLogo(input []byte) (raster image.Image, err error) {
 
 func boundedSVGTree(group *svg.Group, scale float64, layerPixels *float64) bool {
 	for _, node := range group.Children() {
-		if box, ok := svg.NodeAbsStrokeBoundingBox(node); ok {
-			for _, coord := range [...]float32{box.Left(), box.Right(), box.Top(), box.Bottom()} {
-				if !(math.Abs(float64(coord)*scale) <= 1<<16) {
+		switch node := node.(type) {
+		case *svg.Path:
+			if stroke, ok := node.Stroke(); ok {
+				// Dashes can expand a short path into many generated paths.
+				if _, dashed := stroke.Dasharray(); dashed || !(stroke.Width().Get() <= 1<<16) {
 					return false
 				}
 			}
-		}
-		switch node := node.(type) {
-		case *svg.Path:
 			transform := node.AbsTransform()
 			for _, point := range node.Data().Points() {
 				transform.MapPoint(&point)
@@ -76,7 +75,17 @@ func boundedSVGTree(group *svg.Group, scale float64, layerPixels *float64) bool 
 					return false
 				}
 			}
+			if box, ok := node.AbsStrokeBoundingBox(); ok {
+				for _, coord := range [...]float32{box.Left(), box.Right(), box.Top(), box.Bottom()} {
+					if !(math.Abs(float64(coord)*scale) <= 1<<16) {
+						return false
+					}
+				}
+			}
 		case *svg.Group:
+			if !boundedSVGTree(node, scale, layerPixels) {
+				return false
+			}
 			if node.ShouldIsolate() {
 				if box, ok := node.AbsLayerBoundingBox(); ok {
 					*layerPixels += (4 + math.Ceil(float64(box.Width())*scale)) * (4 + math.Ceil(float64(box.Height())*scale))
@@ -84,9 +93,6 @@ func boundedSVGTree(group *svg.Group, scale float64, layerPixels *float64) bool 
 						return false
 					}
 				}
-			}
-			if !boundedSVGTree(node, scale, layerPixels) {
-				return false
 			}
 		}
 	}

@@ -120,6 +120,7 @@ func TestLogoSVGUsesTransparentViewport(t *testing.T) {
 func TestLogoRejectsUnsupportedAndInvalidSVG(t *testing.T) {
 	for _, body := range []string{
 		"<svg viewBox=\"0 0 10 10\"><image href=\"https://example.invalid/logo.png\"/></svg>",
+		`<svg viewBox="0 0 10 10"><style>path {stroke-dasharray: .001 .001}</style><path fill="none" stroke="black" d="M0 0L10 10"/></svg>`,
 		"<svg viewBox=\"0 0 10 10\"><script>document.write('x')</script></svg>",
 		"<svg viewBox=\"0 0 10 10\"><path d=\"M 0 0\" ",
 		"<svg viewBox=\"0 0 10 10\"><defs><g id=\"shape\"><use href=\"#shape\"/></g></defs><use href=\"#shape\"/></svg>",
@@ -200,5 +201,18 @@ func TestLogoSVGPreservesGradientOpacityAndEvenOddFill(t *testing.T) {
 		if alpha < 0x7800 || alpha > 0x8800 {
 			t.Fatalf("gradient opacity was lost: %x", alpha)
 		}
+	}
+}
+
+func TestLogoSVGBypassesRegisteredDecoders(t *testing.T) {
+	image.RegisterFormat("logo-test-svg", "<?xml", nil, func(io.Reader) (image.Config, error) {
+		panic("logo used a decoder registered by the caller")
+	})
+	const markup = `<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>`
+	if _, err := ReadLogo(strings.NewReader(markup)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeLogo([]byte(markup), true); err != errLogo {
+		t.Fatalf("PNG-only artwork accepted SVG: %v", err)
 	}
 }
