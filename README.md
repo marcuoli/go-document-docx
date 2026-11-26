@@ -2,7 +2,8 @@
 
 The [logo example](examples/logo) reads bounded PNG or JPEG artwork and places
 it in a table cell. The caller selects the square size and cell, and the library
-preserves the image aspect ratio.
+preserves the image aspect ratio. Use `Logo.PNG` to retrieve a caller-owned copy
+of the prepared PNG and the original pixel dimensions for another renderer.
 
 ![Module and build requirement Go 1.27.4](https://img.shields.io/badge/module%2Fbuild-Go%201.27.4-blue)
 ![Source compatibility Go 1.27.3](https://img.shields.io/badge/source%20compatibility-Go%201.27.3-blue)

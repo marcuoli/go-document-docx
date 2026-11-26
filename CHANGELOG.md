@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0
+
+- Export the prepared logo PNG and original pixel dimensions for use by other renderers (#60).
+
 ## 0.15.0
 
 - Decode PNG, JPEG, GIF, BMP, TIFF, WebP and self-contained SVG artwork through the shared logo reader (#57).

@@ -103,7 +103,8 @@ func TestLogoSVGUsesTransparentViewport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	img, err := png.Decode(bytes.NewReader(logo.png))
+	prepared, _, _ := logo.PNG()
+	img, err := png.Decode(bytes.NewReader(prepared))
 	if err != nil {
 		t.Fatal(err)
 	}

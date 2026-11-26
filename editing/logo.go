@@ -30,6 +30,13 @@ type Logo struct {
 	width, height int
 }
 
+// PNG returns a caller-owned copy of the prepared PNG and its original width
+// and height in pixels before resampling. The PNG may have smaller dimensions.
+// A zero Logo returns nil and zero dimensions.
+func (logo Logo) PNG() (data []byte, originalWidth, originalHeight int) {
+	return bytes.Clone(logo.png), logo.width, logo.height
+}
+
 // LogoOptions controls optional transformations during logo preparation.
 // Its zero value preserves the supplied background.
 type LogoOptions struct {

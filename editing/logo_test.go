@@ -62,9 +62,21 @@ func TestLogoFitsBothAxes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			raster, err := png.DecodeConfig(bytes.NewReader(logo.png))
+			prepared, originalWidth, originalHeight := logo.PNG()
+			if originalWidth != test.w || originalHeight != test.h {
+				t.Fatalf("wrong original dimensions %d x %d", originalWidth, originalHeight)
+			}
+			raster, err := png.DecodeConfig(bytes.NewReader(prepared))
 			if err != nil || raster.Width != test.rasterW || raster.Height != test.rasterH {
 				t.Fatalf("wrong normalized raster size %+v: %v", raster, err)
+			}
+			if test.name == "downsampled" {
+				first := prepared[0]
+				prepared[0] ^= 0xff
+				again, _, _ := logo.PNG()
+				if again[0] != first {
+					t.Fatal("PNG export aliases the logo data")
+				}
 			}
 			if test.name == "square" {
 				original := bytes.Clone(opening.Bytes())
@@ -141,6 +153,9 @@ func TestLogoInputLimitsAndZeroValue(t *testing.T) {
 		}
 	}
 	var zero Logo
+	if data, width, height := zero.PNG(); data != nil || width != 0 || height != 0 {
+		t.Fatalf("zero logo returned %d PNG bytes and %d x %d dimensions", len(data), width, height)
+	}
 	original := []byte("unchanged")
 	data, err := zero.CenterInTableCell(t.Context(), original, report.Defaults(), LogoCell{})
 	if err != nil || !bytes.Equal(data, original) {
