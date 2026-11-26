@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"image"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
 
 	"github.com/mmonterroca/docxgo/v2/domain"
 )
@@ -25,7 +22,18 @@ func AddImage(paragraph domain.Paragraph, data []byte, width, height int) error 
 	if len(data) == 0 || len(data) > 32<<20 || width < 0 || height < 0 || width > 31680 || height > 31680 {
 		return fmt.Errorf("invalid image size")
 	}
-	cfg, kind, err := image.DecodeConfig(bytes.NewReader(data))
+	codec := identifyLogoRaster(data)
+	format := domain.ImageFormatPNG
+	switch codec.kind {
+	case "png":
+	case "jpeg":
+		format = domain.ImageFormatJPEG
+	case "gif":
+		format = domain.ImageFormatGIF
+	default:
+		return image.ErrFormat
+	}
+	cfg, err := codec.config(bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
@@ -42,13 +50,6 @@ func AddImage(paragraph domain.Paragraph, data []byte, width, height int) error 
 	}
 	if width < 1 || height < 1 || width > 31680 || height > 31680 {
 		return fmt.Errorf("image does not fit supported dimensions")
-	}
-	format := domain.ImageFormatPNG
-	switch kind {
-	case "jpeg":
-		format = domain.ImageFormatJPEG
-	case "gif":
-		format = domain.ImageFormatGIF
 	}
 	size := domain.NewImageSizeInches(float64(width)/1440, float64(height)/1440)
 	// A positive extent below one pixel must remain explicit. The upstream

@@ -216,3 +216,16 @@ func TestLogoSVGBypassesRegisteredDecoders(t *testing.T) {
 		t.Fatalf("PNG-only artwork accepted SVG: %v", err)
 	}
 }
+
+func TestAddImageKeepsWordRasterFormatContract(t *testing.T) {
+	var buf bytes.Buffer
+	if err := bmp.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	if _, kind, err := image.DecodeConfig(bytes.NewReader(buf.Bytes())); kind != "bmp" || err != nil {
+		t.Fatalf("invalid BMP fixture: %s, %v", kind, err)
+	}
+	if err := AddImage(nil, buf.Bytes(), 0, 0); err != image.ErrFormat {
+		t.Fatalf("direct Word embedding should reject BMP before writing a part: %v", err)
+	}
+}
