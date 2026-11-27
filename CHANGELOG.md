@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.17.0
 
 - Use Arial for the report preset and vendor-neutral values in examples and tests (#62). Consumers can set their own font families in the document options.
 
