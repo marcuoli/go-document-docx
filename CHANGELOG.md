@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.1
+
+- Update the SVG renderer to okage v0.23.0 and reverify the Go 1.27.3 source boundary and Go 1.27.4 build requirement (#65).
+
 ## 0.17.0
 
 - Use Arial for the report preset and vendor-neutral values in examples and tests (#62). Consumers can set their own font families in the document options.

@@ -2,28 +2,27 @@
 
 ## Current build selection
 
-Refreshed on 2026-11-23 against the official Go feed, release history and
+Refreshed on 2026-11-27 against the official Go feed, release history and
 upstream stable tags. The module, validation scripts and CI require Go 1.27.4.
 Validation uses the standalone govulncheck v1.10.0.
 
 The direct library releases are etree v1.8.1, go-ole v1.3.0, go-atomicfile
-v0.1.1, docxgo/v2 v2.16.0 and x/net v0.63.0. No newer stable major was found
-for these module paths. The docxgo provenance and minimal-template qualification
-below still apply.
+v0.1.1, docxgo/v2 v2.16.0, okage v0.23.0, x/image v0.48.0, and x/net v0.63.0.
+The SVG renderer update passed the existing artwork admission and rendering
+tests. The docxgo provenance and minimal-template qualification below still apply.
 
 The selected graph also uses x/crypto v0.59.0, x/mod v0.43.0, x/sync v0.25.0,
 x/sys v0.50.0, x/term v0.48.0, x/text v0.44.0, x/tools v0.53.0,
 go-cmp v0.7.0 and Goldmark v1.8.7. x/tools imports Goldmark's v1 paths, so
 adding the separately versioned v2 module would leave v1 selected. Telemetry
-has no stable tag. Retain the revision selected by official x/tools v0.53.0,
-v0.0.0-20261116191925-e77a43154acb. Neither library is imported by the
-library packages or tests. Tidy removes graph-only constraints, so restore the
-verified selections through Go module tooling after tidy.
+has no stable tag. The graph retains the revision selected by x/tools v0.53.0,
+v0.0.0-20261116191925-e77a43154acb. The typesetting test utilities also have
+no stable tag and remain at their upstream-selected revision. The manifest
+deliberately retains selected graph-only constraints.
 
-Windows amd64 formatting, tests, race checks, vet/stdversion, module
-verification and example builds passed on Go 1.27.4. Linux amd64 was
-cross-built. The scanner reported no vulnerabilities in the configured
-source and two Windows example binaries.
+Formatting, tests, race checks, vet, module verification, and example builds
+passed on Windows and Linux amd64 with Go 1.27.4. The configured source and
+example-binary vulnerability scans reported no findings on either platform.
 
 ## Historical qualification
 
@@ -61,7 +60,7 @@ on v0.7.1 and the audit-remediation candidate (#40).
 
 Retain the official release and upstream-only policy. A diagnostic package
 with declarations added is evidence only, not a production dependency workaround.
-The 2026-11-17 official tag check found no newer v2.16/v2.17 stable release.
+The 2026-11-27 official tag and module checks still select v2.16.0.
 Recheck official releases or supported public configuration before the next
 module publication, then qualify editing.New and minimal Open/Render directly
 in Word without repair. Complete caller-supplied Word templates are qualified

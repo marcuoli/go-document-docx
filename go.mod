@@ -9,7 +9,7 @@ require (
 	github.com/go-ole/go-ole v1.3.0
 	github.com/marcuoli/go-atomicfile v0.1.1
 	github.com/mmonterroca/docxgo/v2 v2.16.0
-	github.com/xo/okage v0.1.0
+	github.com/xo/okage v0.23.0
 	golang.org/x/image v0.48.0
 	golang.org/x/net v0.63.0
 )

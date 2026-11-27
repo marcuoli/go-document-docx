@@ -14,24 +14,20 @@ Reusable Go Word documents with configurable report defaults and atomic publicat
 
 **Module/build requirement: Go 1.27.4.** The canonical `go.mod`, validation scripts
 and CI select this current stable release, checked against the official Go feed
-and release history on 2026-11-23.
+and release history on 2026-11-27.
 
 **Verified source compatibility with the selected dependencies: Go 1.27.3.**
-A complete isolated copy with only its own `go` directive lowered passed full
-tests, vet/stdversion, module verification, builds and the synthetic native Word
-integration test with the exact Go 1.27.3 compiler on Windows amd64. The same
-source passed a Linux amd64 cross-build; native Linux execution at this lower
-version was not performed. Production and test source, selected dependency
-versions and checksums matched the shipping tree.
+An isolated copy with only its `go` directive lowered passed tests,
+vet/stdversion, module verification, and builds with Go 1.27.3 on Windows
+and Linux amd64. The synthetic desktop Word integration suite also passed
+on Windows. The source, dependency versions, and checksums matched the
+shipping build inputs.
 
-The adjacent Go 1.27.2 probe was rejected by `go-atomicfile` v0.1.1's unchanged
-Go 1.27.3 requirement before compilation. This sets the selected dependency
-admission boundary; it does not establish an intrinsic Go 1.27.3 language
-requirement. Mingo v0.19.0, including dependencies and tests for Windows/Linux,
-corroborated the dependency constraint; the code's non-type `new` calls require
-Go 1.26. The shipping module remains declared at Go 1.27.4, so using the lower
-source result requires an independently adjusted manifest. Compatibility with
-an older compiler is separate from current security support.
+Go 1.27.2 rejected the selected dependency graph because `go-atomicfile` v0.1.1
+requires Go 1.27.3. Okage v0.23.0 declares the same requirement. Mingo v0.19.0
+corroborated the Go 1.27 dependency requirement on both platforms. The
+source uses the non-type `new` argument introduced in Go 1.26. Installing
+the published module requires Go 1.27.4 as declared in its manifest.
 
 The small report path remains available:
 

@@ -12,6 +12,8 @@ github.com/mmonterroca/docxgo/v2 v2.16.0 h1:IqiSGU3CuiELIC6SaKwcceSIqWV19myHMtDG
 github.com/mmonterroca/docxgo/v2 v2.16.0/go.mod h1:Yc3h7M+sssxGMz51qQ8EHbfDb2NyleLbS+lZLH9Y0us=
 github.com/xo/okage v0.1.0 h1:k30BqSMObiz324Z+V1P/5ZukR5PwW3s2dEiLt9u8oNk=
 github.com/xo/okage v0.1.0/go.mod h1:H4pR7XnUoRFCjXoo9Mx4lQPE9JeUu6OS3pbzMWEAOpY=
+github.com/xo/okage v0.23.0 h1:wgbE/UeM5tO89gYI2ExMWIkfVKVFyBBH3tDqNbp0ycs=
+github.com/xo/okage v0.23.0/go.mod h1:pte/3aqjk2ElZwxYex0erXC3kT2tqxOwWuIHA8fhKOM=
 github.com/yuin/goldmark v1.8.7 h1:XT/tNqCIbabh0ln675w4x3dv04kQBKi8NwYqi9IJaxI=
 github.com/yuin/goldmark v1.8.7/go.mod h1:ip/1k0VRfGynBgxOz0yCqHrbZXhcjxyuS66Brc7iBKg=
 golang.org/x/crypto v0.59.0 h1:xS2jhqYbzNrpvkWP2YTDf4TJwBy3ykR03i8vFDxEc7c=
